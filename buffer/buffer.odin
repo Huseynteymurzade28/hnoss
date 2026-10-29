@@ -8,9 +8,10 @@ import "../text"
 
 Rect :: layout.Rect
 
-// Room for one grapheme: a base rune plus a few combining marks, or a short
-// ZWJ emoji sequence. Longer clusters are truncated at a rune boundary.
-MAX_SYMBOL :: 14
+// Room for one grapheme. 35 bytes fits every RGI emoji ZWJ sequence (the
+// longest, e.g. kiss with two skin tones, is 35); anything longer is
+// truncated at a rune boundary.
+MAX_SYMBOL :: 35
 
 Cell :: struct {
 	symbol:    [MAX_SYMBOL]u8, // UTF-8, `len` bytes used

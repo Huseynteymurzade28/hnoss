@@ -169,3 +169,16 @@ style_patch_add_and_sub :: proc(t: ^testing.T) {
 	testing.expect_value(t, r.add, style.Modifiers{.Italic, .Underlined})
 	testing.expect_value(t, r.sub, style.Modifiers{.Bold})
 }
+
+@(test)
+cell_holds_long_zwj_sequences :: proc(t: ^testing.T) {
+	b: buffer.Buffer
+	buffer.init(&b, {0, 0, 4, 1})
+	defer buffer.destroy(&b)
+	family := "👨‍👩‍👧‍👦" // 25 bytes
+	kiss := "👩🏽‍❤️‍💋‍👨🏻" // 35 bytes
+	buffer.set_string(&b, 0, 0, family)
+	buffer.set_string(&b, 2, 0, kiss)
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 0, 0)), family)
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 2, 0)), kiss)
+}
