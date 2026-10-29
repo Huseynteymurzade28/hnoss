@@ -31,10 +31,3 @@ rect_intersection :: proc(a, b: Rect) -> Rect {
 	}
 	return {x0, y0, x1 - x0, y1 - y0}
 }
-
-// Shrinks `r` by `n` cells on every side (clamped at zero size).
-rect_inner :: proc(r: Rect, n: int) -> Rect {
-	w := max(r.width - 2 * n, 0)
-	h := max(r.height - 2 * n, 0)
-	return {r.x + n, r.y + n, w, h}
-}
