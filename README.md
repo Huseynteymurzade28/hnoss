@@ -26,10 +26,26 @@ for running {
         if hnoss.is_char(ev, 'q') { running = false }
     }
     f := hnoss.begin_frame(&term)          // picks up resizes
-    buffer.set_string(f.buffer, 2, 1, "hello", {fg = style.Named_Color.Cyan, add = {.Bold}})
+    hnoss.markup(f, {2, 1, 40, 1}, "[b]CPU[/] [red]92%[/]")
     hnoss.end_frame(&term)                 // diff vs last frame, one write
 }
 ```
+
+Text is written with a **pen**: it flows styled text straight into the frame, wrapping
+(word / char / clip / ellipsis), aligning and scrolling as it goes, with no intermediate
+text objects. Markup is a thin layer on the same pen.
+
+```odin
+p := hnoss.pen(f, area, wrap = .Word, align = .Center)
+hnoss.write(&p, "CPU ", {add = {.Bold}})
+hnoss.write(&p, fmt.tprint(cpu), {fg = .Red})
+hnoss.finish(&p)
+
+lines, widest := hnoss.measure(article, width = 40)   // same pen, nothing drawn
+```
+
+Widths come from a table generated from Unicode 16 data, and text is handled in
+grapheme clusters: `世界`, `é`, `👩‍💻`, `🇹🇷` all wrap and align correctly.
 
 Rendering is double-buffered: each frame is diffed against the previous one and only
 changed cells are written, with cursor moves and SGR codes emitted only when needed,
@@ -42,7 +58,7 @@ A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame
 | 1 | Backend + restore safety | done |
 | 2 | Buffer + diff renderer | done |
 | 3 | Input parser | done |
-| 4 | Style, text, unicode width | |
+| 4 | Style, text, unicode width | done |
 | 5 | Layout | |
 | 6 | Widgets | |
 | 7 | Demo app (system monitor) | |
@@ -55,7 +71,8 @@ input/     byte stream -> Event (Key, Mouse, Resize, Paste)
 buffer/    Cell, Buffer, double-buffer diff -> minimal ANSI
 style/     Color, Modifier, Style
 layout/    Rect, constraint solver, split
-text/      Span, Line, Text, unicode width
+text/      unicode width, grapheme clusters, truncate
+pen/       styled text writer: wrap, align, scroll, markup
 widgets/   Block, Paragraph, List, Table, ...
 examples/  one runnable example per feature
 tests/     `odin test` suites
@@ -68,6 +85,7 @@ bench/     render pipeline benchmark
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run text          # pen + markup, reflows on resize
 ./build.sh run event_inspector  # shows every key / mouse / paste / resize event
 ./build.sh run plasma        # full-screen truecolor animation at 60 fps
 ./build.sh run backend_box   # q / Ctrl+C quits, p panics (terminal still comes back clean)
