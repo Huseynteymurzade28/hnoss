@@ -75,7 +75,7 @@ begin :: proc(
 		base      = base,
 		scroll    = scroll,
 		tab_width = 4,
-		line      = make([dynamic]Glyph, 0, max(area.width, 0) + 1, allocator),
+		line      = make([dynamic]Glyph, 0, clamp(area.width, 0, 256) + 1, allocator), // grows if needed
 		break_at  = -1,
 	}
 }
