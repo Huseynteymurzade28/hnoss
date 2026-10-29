@@ -5,6 +5,7 @@ import "backend"
 import "buffer"
 import "input"
 import "layout"
+import "widgets"
 
 Rect :: layout.Rect
 Buffer :: buffer.Buffer
@@ -47,6 +48,9 @@ Terminal :: struct {
 	// Set when poll_events hits a terminal error (e.g. .Hangup); it then
 	// returns no events. Check it in the main loop to exit cleanly.
 	error:          Error,
+
+	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
+	cursor_shown:   bool,
 }
 
 // What a frame's draw code works with. Valid between begin_frame and end_frame.
@@ -54,6 +58,8 @@ Frame :: struct {
 	area:   Rect, // the whole terminal
 	buffer: ^Buffer,
 	count:  u64, // frame number, starting at 0
+	cursor: widgets.Cursor, // set it visible to show the terminal cursor there
+	memory: ^widgets.Memory,
 }
 
 init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Terminal, err: Error) {
@@ -97,7 +103,7 @@ begin_frame :: proc(t: ^Terminal) -> ^Frame {
 	}
 	back := &t.buffers[t.current]
 	buffer.reset(back)
-	t.frame = {area = back.area, buffer = back, count = t.frame_count}
+	t.frame = {area = back.area, buffer = back, count = t.frame_count, memory = &t.widget_memory}
 	return &t.frame
 }
 
@@ -119,6 +125,14 @@ end_frame :: proc(t: ^Terminal) -> Error {
 		t.needs_clear = false
 	}
 	buffer.diff(front, back, &b.out)
+	if c := t.frame.cursor; c.visible && layout.rect_contains(back.area, c.x, c.y) {
+		buffer.move_to(&b.out, c.x, c.y)
+		backend.write(b, backend.SHOW_CURSOR)
+		t.cursor_shown = true
+	} else if t.cursor_shown {
+		backend.write(b, backend.HIDE_CURSOR)
+		t.cursor_shown = false
+	}
 	backend.write(b, buffer.END_SYNC)
 	t.last_bytes = len(b.out) - start
 
