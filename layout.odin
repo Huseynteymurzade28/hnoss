@@ -18,3 +18,4 @@ inset :: layout.inset
 pad :: layout.pad
 center :: layout.center
 grid_cell :: layout.grid_cell
+split_slice :: layout.split_slice
