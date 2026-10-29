@@ -24,7 +24,7 @@ diff :: proc(prev, next: ^Buffer, out: ^[dynamic]u8) {
 	w := next.area.width
 
 	for row in 0 ..< next.area.height {
-		// Port of Ratatui's Buffer::diff skip logic, per row:
+		// Wide-character bookkeeping, per row:
 		//  - `to_skip`: cells covered by the wide char just emitted.
 		//  - `invalidated`: cells the *previous* frame's wide char covered;
 		//    they must be redrawn even if unchanged, because writing a

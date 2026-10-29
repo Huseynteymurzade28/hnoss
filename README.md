@@ -1,17 +1,14 @@
 # hnoss
 
-> Named after Hnoss, daughter of Freyja. Her name means "treasure, precious beauty".
-
-**hnoss** is an immediate-mode, widget-rich TUI library for [Odin](https://odin-lang.org),
-inspired by [Ratatui](https://ratatui.rs).
+**hnoss** is an immediate-mode, widget-rich TUI library for [Odin](https://odin-lang.org).
 
 ## Goals
 
 - **Pure Odin.** Only `core:` and `base:`. No ncurses, no termbox, no C.
 - **Immediate mode.** Every frame you describe the whole UI; hnoss diffs it against
   the previous frame and writes the minimal ANSI to the terminal.
-- **Ratatui-level ergonomics**: constraint layouts, styled text, and a real widget set
-  (Block, Paragraph, List, Table, Gauge, Sparkline, Tabs, Scrollbar, TextInput).
+- **Batteries included**: layout, styled text and a real widget set, designed for
+  Odin rather than ported from another language.
 - **Explicit allocators.** Per-frame scratch lives in `context.temp_allocator`.
 - **No hidden global state**, apart from one terminal-restore hook.
 - **The terminal is always restored** (raw mode, cursor, alt screen), even on panic or signal.
