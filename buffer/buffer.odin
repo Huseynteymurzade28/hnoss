@@ -165,3 +165,20 @@ set_style :: proc(b: ^Buffer, area: Rect, s: style.Style) {
 		}
 	}
 }
+
+// Blanks every cell in `area` (clipped to the buffer) and applies `s`:
+// a solid background. A wide char whose right half falls inside the area
+// loses its left half too (via set_symbol on the first column); one whose
+// left half is the last column simply becomes a blank, as its right half
+// already is.
+fill :: proc(b: ^Buffer, area: Rect, s: style.Style) {
+	r := layout.rect_intersection(area, b.area)
+	for y in r.y ..< r.y + r.height {
+		set_symbol(b, r.x, y, " ", 1, s)
+		for x in r.x + 1 ..< r.x + r.width {
+			c := &b.cells[index_of(b, x, y)]
+			cell_set_symbol(c, " ", 1)
+			cell_set_style(c, s)
+		}
+	}
+}

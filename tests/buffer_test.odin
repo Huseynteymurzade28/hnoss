@@ -182,3 +182,20 @@ cell_holds_long_zwj_sequences :: proc(t: ^testing.T) {
 	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 0, 0)), family)
 	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 2, 0)), kiss)
 }
+
+@(test)
+fill_blanks_and_styles_area :: proc(t: ^testing.T) {
+	b: buffer.Buffer
+	buffer.init(&b, {0, 0, 6, 2})
+	defer buffer.destroy(&b)
+	buffer.set_string(&b, 0, 0, "abcdef")
+	buffer.set_string(&b, 0, 1, "x世yz") // 世 at cells 1-2
+	buffer.fill(&b, {2, 0, 3, 2}, {bg = .Blue})
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 1, 0)), "b")
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 2, 0)), " ")
+	testing.expect_value(t, buffer.get(&b, 4, 0).bg, style.Color(style.Named_Color.Blue))
+	testing.expect_value(t, buffer.get(&b, 5, 0).bg, nil)
+	// 世's right half was inside the area: its left half must not survive.
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 1, 1)), " ")
+	testing.expect_value(t, buffer.get(&b, 1, 1).width, 1)
+}
