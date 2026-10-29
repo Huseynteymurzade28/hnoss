@@ -3,6 +3,7 @@ package tests
 import "core:testing"
 import "../buffer"
 import "../input"
+import "../layout"
 import "../widgets"
 
 // A tiny harness: a buffer, persistent widget memory and a cursor, so a
@@ -151,3 +152,81 @@ widget_focus_order_cycles_with_tab :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(rest), 1)
 	testing.expect_value(t, rest[0], ch('x'))
 }
+
+@(test)
+widget_list_keys_scroll_and_activate :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	items := []string{"alpha", "beta", "gamma", "delta", "epsilon"}
+	st: widgets.List_State
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+	widgets.list(ui, ui.area, items, &st)
+	expect_rows(t, screen_rows(&hs.buf), "› alpha", "  beta", "  gamma")
+
+	ui = frame(hs, key(.Down), ch('j'), ch('j'), ch('x'))
+	changed := widgets.list(ui, ui.area, items, &st)
+	testing.expect(t, changed)
+	testing.expect_value(t, st.selected, 3)
+	testing.expect_value(t, st.offset, 1) // scrolled so "delta" is visible
+	expect_rows(t, screen_rows(&hs.buf), "  beta", "  gamma", "› delta")
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1) // 'x' is not ours
+
+	ui = frame(hs, key(.End), key(.Enter))
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 4)
+	testing.expect(t, st.activated)
+
+	ui = frame(hs)
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect(t, !st.activated) // only for the frame Enter was pressed
+}
+
+@(test)
+widget_list_mouse :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	items := []string{"a", "b", "c", "d", "e", "f"}
+	st: widgets.List_State
+	ui := frame(hs, click(4, 2))
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+	testing.expect(t, widgets.focused(ui, &st))
+
+	ui = frame(hs, wheel(1, 1, true))
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.offset, 3) // wheel moves the view, not the selection
+	testing.expect_value(t, st.selected, 2)
+
+	ui = frame(hs, click(4, 9)) // outside: ignored
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+}
+
+@(test)
+widget_list_empty :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	st: widgets.List_State
+	ui := frame(hs, key(.Down), key(.Enter))
+	widgets.focus(ui, &st)
+	widgets.list(ui, ui.area, {}, &st)
+	testing.expect_value(t, st.selected, 0)
+	testing.expect(t, !st.activated)
+}
+
+@(test)
+widget_table_columns_and_selection :: proc(t: ^testing.T) {
+	hs := harness(20, 4)
+	cols := []widgets.Column{
+		{title = "Name", width = layout_fill()},
+		{title = "CPU", width = 5, align = .Right},
+	}
+	rows := [][]string{{"odin", "12%"}, {"bash", "3%"}, {"a-very-long-name", "100%"}}
+	st: widgets.Table_State
+	ui := frame(hs, click(3, 2))
+	widgets.table(ui, ui.area, cols, rows, &st)
+	testing.expect_value(t, st.selected, 1) // row 0 is the header
+	expect_rows(t, screen_rows(&hs.buf), "Name             CPU", "odin             12%", "bash              3%", "a-very-long-n…  100%") // name column: 20 - 5 - 1 gap = 14 cells
+}
+
+@(private = "file")
+layout_fill :: proc() -> layout.Size { return layout.fill() }

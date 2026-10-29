@@ -28,3 +28,11 @@ paragraph :: widgets.paragraph
 Paragraph_Options :: widgets.Paragraph_Options
 Scroll_State :: widgets.Scroll_State
 scrollbar :: widgets.scrollbar
+
+list :: widgets.list
+List_State :: widgets.List_State
+List_Options :: widgets.List_Options
+table :: widgets.table
+Table_State :: widgets.Table_State
+Table_Options :: widgets.Table_Options
+Column :: widgets.Column
