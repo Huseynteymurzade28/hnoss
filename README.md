@@ -2,6 +2,14 @@
 
 **hnoss** is an immediate-mode, widget-rich TUI library for [Odin](https://odin-lang.org).
 
+![hnoss monitor, Odlar Yurdu theme](docs/monitor-odlar-yurdu.svg)
+
+<sub>`examples/monitor`: a live system monitor in about 700 lines, reading `/proc` directly.
+Braille graphs, gradient meters, a sortable, filterable process table, four themes.
+Above: **Odlar Yurdu**; below: **Xəzər**.</sub>
+
+![hnoss monitor, Xəzər theme](docs/monitor-xezer.svg)
+
 ## Goals
 
 - **Pure Odin.** Only `core:` and `base:`. No ncurses, no termbox, no C.
@@ -98,7 +106,7 @@ A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame
 | 4 | Style, text, unicode width | done |
 | 5 | Layout | done |
 | 6 | Widgets | done |
-| 7 | Demo app (system monitor) | |
+| 7 | Demo app (system monitor) | done |
 
 ## Layout
 
@@ -114,6 +122,7 @@ widgets/   box, label, paragraph, list, table, gauge, sparkline, tabs, scrollbar
 examples/  one runnable example per feature
 tests/     `odin test` suites
 bench/     render pipeline benchmark
+tools/     width-table generator, pty test harness, ANSI-to-SVG screenshots
 ```
 
 ## Building
@@ -122,6 +131,7 @@ bench/     render pipeline benchmark
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run monitor       # the system monitor above (t: theme, c m p n: sort, /: filter)
 ./build.sh run w_list        # one example per widget: w_box w_paragraph w_list w_table
                              #   w_gauge w_sparkline w_tabs w_scrollbar w_input
 ./build.sh run layout        # cuts, split, grid, centered dialog
