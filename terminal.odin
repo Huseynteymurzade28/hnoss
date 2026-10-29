@@ -3,11 +3,30 @@ package hnoss
 import "core:mem"
 import "backend"
 import "buffer"
+import "input"
 import "layout"
 
 Rect :: layout.Rect
 Buffer :: buffer.Buffer
 Error :: backend.Error
+Option :: backend.Option
+Options :: backend.Options
+DEFAULT_OPTIONS :: backend.DEFAULT_OPTIONS
+
+Event :: input.Event
+Key :: input.Key
+Key_Code :: input.Key_Code
+Key_Modifiers :: input.Key_Modifiers
+Mouse :: input.Mouse
+Paste :: input.Paste
+Resize :: input.Resize
+is_char :: input.is_char
+is_key :: input.is_key
+
+// How long a lone ESC waits for the rest of an escape sequence before it is
+// reported as the Esc key. Long enough for sequences split by a slow link,
+// short enough not to feel laggy.
+DEFAULT_ESC_TIMEOUT_MS :: 25
 
 // Owns the terminal and two buffers: `front` is what is on screen, `back`
 // is what the current frame draws into. end_frame diffs back against front,
@@ -21,6 +40,13 @@ Terminal :: struct {
 	needs_clear:  bool,
 	last_bytes:   int, // bytes written by the last end_frame, for diagnostics
 	allocator:    mem.Allocator,
+
+	parser:         input.Parser,
+	read_buf:       [4096]u8,
+	esc_timeout_ms: int,
+	// Set when poll_events hits a terminal error (e.g. .Hangup); it then
+	// returns no events. Check it in the main loop to exit cleanly.
+	error:          Error,
 }
 
 // What a frame's draw code works with. Valid between begin_frame and end_frame.
@@ -30,8 +56,9 @@ Frame :: struct {
 	count:  u64, // frame number, starting at 0
 }
 
-init :: proc(opts := backend.DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Terminal, err: Error) {
+init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Terminal, err: Error) {
 	t.allocator = allocator
+	t.esc_timeout_ms = DEFAULT_ESC_TIMEOUT_MS
 	backend.init(&t.backend, opts, allocator) or_return
 	defer if err != .None { backend.deinit(&t.backend) }
 
@@ -42,10 +69,12 @@ init :: proc(opts := backend.DEFAULT_OPTIONS, allocator := context.allocator) ->
 			return t, .Out_Of_Memory
 		}
 	}
+	input.parser_init(&t.parser, allocator)
 	return t, .None
 }
 
 deinit :: proc(t: ^Terminal) {
+	input.parser_destroy(&t.parser)
 	for &b in t.buffers {
 		buffer.destroy(&b)
 	}
@@ -102,4 +131,52 @@ end_frame :: proc(t: ^Terminal) -> Error {
 // else wrote to the terminal).
 clear :: proc(t: ^Terminal) {
 	t.needs_clear = true
+}
+
+// Waits up to `timeout_ms` (-1 = forever, 0 = just check) for input and
+// returns every event that arrived. The slice and any Paste text live in
+// `allocator`, by default the frame's temp allocator.
+//
+//	for ev in hnoss.poll_events(&term, 16) {
+//		if hnoss.is_char(ev, 'q') { running = false }
+//	}
+poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_allocator) -> []Event {
+	events := make([dynamic]Event, allocator)
+	if t.error != .None {
+		return events[:]
+	}
+
+	timeout := timeout_ms
+	waited_for_esc := false
+	for {
+		res, err := backend.read(&t.backend, t.read_buf[:], timeout)
+		if err != .None {
+			t.error = err
+			break
+		}
+		if res.resized {
+			if sz, serr := backend.size(&t.backend); serr == .None {
+				append(&events, Resize{sz.cols, sz.rows})
+			}
+		}
+		if res.n > 0 {
+			input.feed(&t.parser, t.read_buf[:res.n], &events, allocator)
+		}
+
+		switch {
+		case res.n == len(t.read_buf):
+			timeout = 0 // buffer was full: there is probably more waiting
+		case input.has_pending(&t.parser):
+			if res.n == 0 && waited_for_esc {
+				// Nothing more arrived in time: a lone ESC really is Esc.
+				input.flush(&t.parser, &events, allocator)
+				return events[:]
+			}
+			timeout = t.esc_timeout_ms
+			waited_for_esc = true
+		case:
+			return events[:]
+		}
+	}
+	return events[:]
 }
