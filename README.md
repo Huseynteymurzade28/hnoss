@@ -24,7 +24,7 @@ Early work. See the roadmap below.
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Scaffold | done |
-| 1 | Backend + restore safety | in progress |
+| 1 | Backend + restore safety | done |
 | 2 | Buffer + diff renderer | |
 | 3 | Input parser | |
 | 4 | Style, text, unicode width | |
@@ -52,7 +52,7 @@ tests/     `odin test` suites
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
-./build.sh run empty
+./build.sh run backend_box   # q / Ctrl+C quits, p panics (terminal still comes back clean)
 ```
 
 ## License
