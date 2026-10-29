@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Usage: ./build.sh [check|test|examples|run <example>|all]   (default: all)
+# Usage: ./build.sh [check|test|examples|run <example>|bench|all]   (default: all)
+# Examples build with -debug -o:speed: debug info and bounds checks, release speed.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -24,7 +25,7 @@ examples() {
 	for d in examples/*/; do
 		name=$(basename "$d")
 		echo "build $name"
-		"$ODIN" build "$d" "${FLAGS[@]}" -debug -out:"bin/$name"
+		"$ODIN" build "$d" "${FLAGS[@]}" -debug -o:speed -out:"bin/$name"
 	done
 }
 
@@ -33,7 +34,8 @@ case "${1:-all}" in
 	check)    check ;;
 	test)     test_ ;;
 	examples) examples ;;
-	run)      "$ODIN" run "examples/${2:?example name}" "${FLAGS[@]}" -debug -out:"bin/$2" ;;
+	run)      "$ODIN" run "examples/${2:?example name}" "${FLAGS[@]}" -debug -o:speed -out:"bin/$2" ;;
+	bench)    "$ODIN" run bench/render "${FLAGS[@]}" -o:speed -out:bin/bench_render ;;
 	all)      check; test_; examples ;;
 	*)        echo "unknown command: $1" >&2; exit 1 ;;
 esac
