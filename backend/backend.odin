@@ -27,6 +27,7 @@ Error :: enum u8 {
 	Write_Failed,
 	Read_Failed,
 	Hangup, // the terminal went away (e.g. the emulator window was closed)
+	Out_Of_Memory,
 }
 
 Size :: struct {
