@@ -36,3 +36,6 @@ table :: widgets.table
 Table_State :: widgets.Table_State
 Table_Options :: widgets.Table_Options
 Column :: widgets.Column
+gauge :: widgets.gauge
+sparkline :: widgets.sparkline
+tabs :: widgets.tabs

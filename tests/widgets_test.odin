@@ -230,3 +230,49 @@ widget_table_columns_and_selection :: proc(t: ^testing.T) {
 
 @(private = "file")
 layout_fill :: proc() -> layout.Size { return layout.fill() }
+
+@(test)
+widget_gauge_eighths_and_label :: proc(t: ^testing.T) {
+	hs := harness(10, 1)
+	ui := frame(hs)
+	widgets.gauge(ui, ui.area, 0.55) // 5.5 cells = 44 eighths: 5 full + "▌", label centered at col 3
+	expect_rows(t, screen_rows(&hs.buf), "███55%")
+	// The label's first two cells sit on the filled part and are inverted.
+	testing.expect_value(t, buffer.get(&hs.buf, 4, 0).bg, ui.theme.gauge_filled.fg)
+	testing.expect_value(t, buffer.get(&hs.buf, 6, 0).bg, ui.theme.gauge_empty.bg)
+
+	ui = frame(hs)
+	widgets.gauge(ui, ui.area, 0.43, "")
+	expect_rows(t, screen_rows(&hs.buf), "████▎") // 4.3 cells: .3 * 8 ≈ 2 eighths
+	ui = frame(hs)
+	widgets.gauge(ui, ui.area, 2, "x")
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&hs.buf, 9, 0)), "█") // clamped to 100%
+}
+
+@(test)
+widget_sparkline :: proc(t: ^testing.T) {
+	hs := harness(6, 2)
+	ui := frame(hs)
+	widgets.sparkline(ui, ui.area, {0, 1, 2, 4, 8}, max_value = 8)
+	// 2 rows = 16 levels: 0, 2, 4, 8, 16 eighths; right-aligned in 6 columns.
+	expect_rows(t, screen_rows(&hs.buf), "     █", "  ▂▄██")
+}
+
+@(test)
+widget_tabs :: proc(t: ^testing.T) {
+	hs := harness(30, 1)
+	titles := []string{"CPU", "Memory", "Net"}
+	sel := 0
+	ui := frame(hs)
+	widgets.tabs(ui, ui.area, titles, &sel)
+	expect_rows(t, screen_rows(&hs.buf), " CPU │ Memory │ Net")
+
+	ui = frame(hs, click(16, 0)) // on "Net"
+	changed := widgets.tabs(ui, ui.area, titles, &sel)
+	testing.expect(t, changed)
+	testing.expect_value(t, sel, 2)
+
+	ui = frame(hs, key(.Left), key(.Left), key(.Left))
+	widgets.tabs(ui, ui.area, titles, &sel)
+	testing.expect_value(t, sel, 0) // clamped
+}
