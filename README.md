@@ -4,7 +4,7 @@
 
 ![hnoss monitor, Odlar Yurdu theme](docs/monitor-odlar-yurdu.svg)
 
-<sub>`examples/monitor`: a live system monitor in about 700 lines, reading `/proc` directly.
+<sub>`examples/monitor`: a live system monitor in under 900 lines, reading `/proc` directly.
 Braille graphs, gradient meters, a sortable, filterable process table, four themes.
 Above: **Odlar Yurdu**; below: **Xəzər**.</sub>
 
