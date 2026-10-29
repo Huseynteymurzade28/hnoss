@@ -19,13 +19,28 @@ inspired by [Ratatui](https://ratatui.rs).
 
 ## Status
 
-Early work. See the roadmap below.
+Early work. See the roadmap below. What exists today:
+
+```odin
+term, err := hnoss.init()
+defer hnoss.deinit(&term)
+for running {
+    f := hnoss.begin_frame(&term)          // picks up resizes
+    buffer.set_string(f.buffer, 2, 1, "hello", {fg = style.Named_Color.Cyan, add = {.Bold}})
+    hnoss.end_frame(&term)                 // diff vs last frame, one write
+}
+```
+
+Rendering is double-buffered: each frame is diffed against the previous one and only
+changed cells are written, with cursor moves and SGR codes emitted only when needed,
+inside a synchronized-output block so the terminal never shows a torn frame.
+A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame in ~0.07 ms.
 
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Scaffold | done |
 | 1 | Backend + restore safety | done |
-| 2 | Buffer + diff renderer | |
+| 2 | Buffer + diff renderer | done |
 | 3 | Input parser | |
 | 4 | Style, text, unicode width | |
 | 5 | Layout | |
@@ -44,6 +59,7 @@ text/      Span, Line, Text, unicode width
 widgets/   Block, Paragraph, List, Table, ...
 examples/  one runnable example per feature
 tests/     `odin test` suites
+bench/     render pipeline benchmark
 ```
 
 ## Building
@@ -52,7 +68,9 @@ tests/     `odin test` suites
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run plasma        # full-screen truecolor animation at 60 fps
 ./build.sh run backend_box   # q / Ctrl+C quits, p panics (terminal still comes back clean)
+./build.sh bench             # time fill + diff for a 200x60 frame
 ```
 
 ## License
