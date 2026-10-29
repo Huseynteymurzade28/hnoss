@@ -22,12 +22,16 @@ Parser :: struct {
 	pending:  [dynamic]u8, // bytes of an incomplete sequence
 	paste:    [dynamic]u8,
 	in_paste: bool,
+	// Kitty keyboard protocol flags the terminal reported in reply to
+	// `CSI ? u`, or -1 if it never answered (no support).
+	keyboard_flags: int,
 }
 
 parser_init :: proc(p: ^Parser, allocator := context.allocator) {
 	p.pending = make([dynamic]u8, 0, 64, allocator)
 	p.paste = make([dynamic]u8, 0, 0, allocator)
 	p.in_paste = false
+	p.keyboard_flags = -1
 }
 
 parser_destroy :: proc(p: ^Parser) {
@@ -94,6 +98,7 @@ run :: proc(p: ^Parser, events: ^[dynamic]Event, final: bool, allocator: mem.All
 		switch st {
 		case .Event:      append(events, ev)
 		case .Paste_Start: p.in_paste = true
+		case .Keyboard_Flags: p.keyboard_flags = int(ev.(Key).char)
 		case .Skip, .Incomplete:
 		}
 	}
@@ -106,6 +111,7 @@ Status :: enum u8 {
 	Skip,        // consumed, nothing to report (unknown or ignored sequence)
 	Incomplete,  // need more bytes
 	Paste_Start,
+	Keyboard_Flags, // reply to the kitty keyboard query; value in Key.char
 }
 
 // Decodes the first event in `b` (len >= 1). `final` means no more bytes
@@ -258,6 +264,10 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 		}
 		return nil, n, .Skip
 	}
+	if private == '?' && final == 'u' {
+		// CSI ? flags u: the terminal speaks the kitty keyboard protocol.
+		return Key{char = rune(params[0] if nparams > 0 else 0)}, n, .Keyboard_Flags
+	}
 	if private != 0 {
 		return nil, n, .Skip // e.g. replies to queries we never sent
 	}
@@ -305,7 +315,9 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 		// CSI codepoint ; modifiers u (fixterms / kitty, used by some
 		// terminals for keys like Ctrl+Enter even without the protocol).
 		if nparams == 0 { return nil, n, .Skip }
-		return csi_u_key(params[0], mods), n, .Event
+		k, ok := csi_u_key(params[0], mods)
+		if !ok { return nil, n, .Skip }
+		return k, n, .Event
 	case:
 		return nil, n, .Skip // focus in/out, cursor reports, ...
 	}
@@ -349,16 +361,37 @@ decode_modifiers :: proc(param: int) -> Key_Modifiers {
 	return transmute(Key_Modifiers)u8((param - 1) & 0xf)
 }
 
+// CSI code ; modifiers u. `code` is a Unicode codepoint, or one of the
+// kitty protocol's functional-key numbers in the Private Use Area.
+// https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
 @(private)
-csi_u_key :: proc(cp: int, mods: Key_Modifiers) -> Key {
-	switch cp {
-	case 13:  return {code = .Enter, mods = mods}
-	case 9:   return {code = .Tab, mods = mods}
-	case 27:  return {code = .Esc, mods = mods}
-	case 127: return {code = .Backspace, mods = mods}
+csi_u_key :: proc(code: int, mods: Key_Modifiers) -> (Key, bool) {
+	switch code {
+	case 13:  return {code = .Enter, mods = mods}, true
+	case 9:   return {code = .Tab, mods = mods}, true
+	case 27:  return {code = .Esc, mods = mods}, true
+	case 127, 8: return {code = .Backspace, mods = mods}, true
+	case 57399 ..= 57408: // KP_0 .. KP_9
+		return {code = .Char, char = rune('0' + code - 57399), mods = mods}, true
+	case 57409 ..= 57416: // KP . / * - + Enter = ,
+		if code == 57414 { return {code = .Enter, mods = mods}, true }
+		return {code = .Char, char = KP_CHARS[code - 57409], mods = mods}, true
+	case 57417 ..= 57426: // KP arrows, PgUp/PgDn, Home/End, Insert/Delete
+		return {code = KP_NAV[code - 57417], mods = mods}, true
+	case 57376 ..= 57398, 57344 ..= 57375, 57427 ..= 57454:
+		return {}, false // F13+, lock/media/modifier keys: nothing to map to
 	}
-	return {code = .Char, char = rune(cp), mods = mods}
+	if code < 0x20 || code > 0x10ffff {
+		return {}, false
+	}
+	return {code = .Char, char = rune(code), mods = mods}, true
 }
+
+@(private, rodata)
+KP_CHARS := [8]rune{'.', '/', '*', '-', '+', 0, '=', ','} // [5] is KP_ENTER, handled above
+
+@(private, rodata)
+KP_NAV := [10]Key_Code{.Left, .Right, .Up, .Down, .Page_Up, .Page_Down, .Home, .End, .Insert, .Delete}
 
 // SGR (1006) mouse: CSI < b ; x ; y M  (press/motion)  or  ... m  (release).
 //   b & 3: 0 left, 1 middle, 2 right, 3 none   b & 4 Shift, 8 Alt, 16 Ctrl

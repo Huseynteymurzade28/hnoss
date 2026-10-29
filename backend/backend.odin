@@ -19,10 +19,16 @@ Option :: enum u8 {
 	// terminal's own click-to-select stops working (Shift+drag usually
 	// still selects).
 	Mouse_Capture,
+	// Ask for the kitty keyboard protocol ("disambiguate escape codes"):
+	// Esc, Ctrl+I vs Tab, Ctrl+H vs Backspace, Shift+Enter, Ctrl+Backspace
+	// ... become distinguishable, and Esc needs no timeout. Terminals that
+	// don't implement it ignore the request.
+	// https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+	Kitty_Keyboard,
 }
 Options :: bit_set[Option; u8]
 
-DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste}
+DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste, .Kitty_Keyboard}
 
 Error :: enum u8 {
 	None,
@@ -65,6 +71,11 @@ ENABLE_BRACKETED_PASTE  :: "\x1b[?2004h"
 DISABLE_BRACKETED_PASTE :: "\x1b[?2004l"
 // 1000 press/release, 1002 drag, 1003 any motion, 1006 SGR coordinates
 // (no 223-column limit, distinguishes which button was released).
+// Push flags 1 (disambiguate) onto the keyboard-mode stack, then query the
+// current flags; a supporting terminal answers CSI ? flags u. The stack is
+// per screen, so push after entering the alt screen and pop before leaving.
+ENABLE_KITTY_KEYBOARD  :: "\x1b[>1u\x1b[?u"
+DISABLE_KITTY_KEYBOARD :: "\x1b[<u"
 ENABLE_MOUSE  :: "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h"
 DISABLE_MOUSE :: "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l"
 

@@ -54,6 +54,10 @@ Terminal :: struct {
 	// returns no events. Check it in the main loop to exit cleanly.
 	error:          Error,
 
+	// The terminal confirmed the kitty keyboard protocol (see
+	// Option.Kitty_Keyboard). Set after the first poll that sees the reply.
+	kitty_keyboard: bool,
+
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
 }
@@ -180,6 +184,7 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 		}
 		if res.n > 0 {
 			input.feed(&t.parser, t.read_buf[:res.n], &events, allocator)
+			t.kitty_keyboard = t.parser.keyboard_flags > 0
 		}
 
 		switch {

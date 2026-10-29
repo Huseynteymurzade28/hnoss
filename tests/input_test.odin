@@ -164,3 +164,40 @@ input_garbage_is_dropped :: proc(t: ^testing.T) {
 	expect_events(t, "\x80\xff" + "c", ch('c'))          // invalid UTF-8
 	expect_events(t, "\x1b[99~" + "d", ch('d'))          // unknown ~ key
 }
+
+// Sequences kitty sends with the keyboard protocol's "disambiguate" flag.
+@(test)
+input_kitty_disambiguated_keys :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[27u", key(.Esc))                       // Esc: no timeout needed
+	expect_events(t, "\x1b[105;5u", ch('i', {.Ctrl}))            // Ctrl+I, not Tab
+	expect_events(t, "\x1b[104;5u", ch('h', {.Ctrl}))            // Ctrl+H, not Backspace
+	expect_events(t, "\x1b[109;5u", ch('m', {.Ctrl}))            // Ctrl+M, not Enter
+	expect_events(t, "\x1b[13;2u", key(.Enter, {.Shift}))        // Shift+Enter
+	expect_events(t, "\x1b[127;5u", key(.Backspace, {.Ctrl}))    // Ctrl+Backspace
+	expect_events(t, "\x1b[9;2u", key(.Tab, {.Shift}))
+	expect_events(t, "\x1b[120;3u", ch('x', {.Alt}))
+	expect_events(t, "\x1b[97;6u", ch('a', {.Shift, .Ctrl}))
+	expect_events(t, "\x1b[399;5u", ch('Ə', {.Ctrl}))             // non-ASCII codepoints too
+	expect_events(t, "\x1b[99;69u", ch('c', {.Ctrl}))            // Caps Lock bit (64) is ignored
+}
+
+@(test)
+input_kitty_keypad_and_unknown_keys :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[57414u", key(.Enter))                 // KP_ENTER
+	expect_events(t, "\x1b[57399u\x1b[57408u", ch('0'), ch('9')) // KP_0, KP_9
+	expect_events(t, "\x1b[57413u", ch('+'))
+	expect_events(t, "\x1b[57419u\x1b[57426u", key(.Up), key(.Delete))
+	expect_events(t, "\x1b[57376u" + "a", ch('a'))               // F13: dropped
+	expect_events(t, "\x1b[57441;2u" + "b", ch('b'))             // Left Shift on its own: dropped
+}
+
+@(test)
+input_kitty_capability_reply :: proc(t: ^testing.T) {
+	p: input.Parser
+	input.parser_init(&p, context.temp_allocator)
+	events := make([dynamic]input.Event, context.temp_allocator)
+	testing.expect_value(t, p.keyboard_flags, -1)
+	input.feed(&p, transmute([]u8)string("\x1b[?1u"), &events)
+	testing.expect_value(t, p.keyboard_flags, 1)
+	testing.expect_value(t, len(events), 0) // the reply is not an event
+}

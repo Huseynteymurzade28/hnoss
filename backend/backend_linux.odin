@@ -76,6 +76,7 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	if .Mouse_Capture in opts { push_seq(DISABLE_MOUSE) }
 	if .Bracketed_Paste in opts { push_seq(DISABLE_BRACKETED_PASTE) }
 	if .Hide_Cursor in opts { push_seq(SHOW_CURSOR) }
+	if .Kitty_Keyboard in opts { push_seq(DISABLE_KITTY_KEYBOARD) }
 	if .Alt_Screen in opts { push_seq(LEAVE_ALT_SCREEN) }
 	intrinsics.atomic_store(&g_state.resized, false)
 	// Arm the hook before touching the terminal, so a failure from here
@@ -93,6 +94,7 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	if .Hide_Cursor in opts { write(b, HIDE_CURSOR) }
 	if .Bracketed_Paste in opts { write(b, ENABLE_BRACKETED_PASTE) }
 	if .Mouse_Capture in opts { write(b, ENABLE_MOUSE) }
+	if .Kitty_Keyboard in opts { write(b, ENABLE_KITTY_KEYBOARD) }
 	write(b, CLEAR_SCREEN)
 	write(b, CURSOR_HOME)
 	return flush(b)
