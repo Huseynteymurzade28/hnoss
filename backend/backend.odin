@@ -11,10 +11,18 @@ Option :: enum u8 {
 	// on fatal signals (SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGTRAP, SIGABRT).
 	// Any handlers you installed before `init` are put back by `deinit`.
 	Signal_Handlers,
+	// Pasted text arrives wrapped in markers (xterm ?2004) and becomes one
+	// Paste event instead of a burst of key presses.
+	Bracketed_Paste,
+	// Report mouse clicks, drags, motion and wheel (xterm ?1000/?1002/?1003
+	// with SGR encoding ?1006). Off by default: while it is on, the
+	// terminal's own click-to-select stops working (Shift+drag usually
+	// still selects).
+	Mouse_Capture,
 }
 Options :: bit_set[Option; u8]
 
-DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers}
+DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste}
 
 Error :: enum u8 {
 	None,
@@ -53,6 +61,12 @@ CURSOR_HOME      :: "\x1b[H"
 // parsing. The restore hook can fire while a frame is half written, so it
 // sends CAN first to make sure the sequences after it are read cleanly.
 CANCEL_SEQUENCE  :: "\x18"
+ENABLE_BRACKETED_PASTE  :: "\x1b[?2004h"
+DISABLE_BRACKETED_PASTE :: "\x1b[?2004l"
+// 1000 press/release, 1002 drag, 1003 any motion, 1006 SGR coordinates
+// (no 223-column limit, distinguishes which button was released).
+ENABLE_MOUSE  :: "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h"
+DISABLE_MOUSE :: "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l"
 
 // Install with `context.assertion_failure_proc = backend.assertion_failure_proc`.
 // It restores the terminal *before* the panic message is printed, so the

@@ -37,7 +37,7 @@ g_state: struct {
 	// Self-pipe: the SIGWINCH handler writes a byte so a blocked poll(2)
 	// wakes up. https://cr.yp.to/docs/selfpipe.html
 	wake:     [2]linux.Fd,
-	seq:      [64]u8, // escape sequence that undoes what init turned on
+	seq:      [128]u8, // escape sequence that undoes what init turned on
 	seq_len:  int,
 }
 
@@ -73,6 +73,8 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	g_state.seq_len = 0
 	push_seq(CANCEL_SEQUENCE)
 	push_seq(RESET_SGR)
+	if .Mouse_Capture in opts { push_seq(DISABLE_MOUSE) }
+	if .Bracketed_Paste in opts { push_seq(DISABLE_BRACKETED_PASTE) }
 	if .Hide_Cursor in opts { push_seq(SHOW_CURSOR) }
 	if .Alt_Screen in opts { push_seq(LEAVE_ALT_SCREEN) }
 	intrinsics.atomic_store(&g_state.resized, false)
@@ -89,6 +91,8 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 
 	if .Alt_Screen in opts { write(b, ENTER_ALT_SCREEN) }
 	if .Hide_Cursor in opts { write(b, HIDE_CURSOR) }
+	if .Bracketed_Paste in opts { write(b, ENABLE_BRACKETED_PASTE) }
+	if .Mouse_Capture in opts { write(b, ENABLE_MOUSE) }
 	write(b, CLEAR_SCREEN)
 	write(b, CURSOR_HOME)
 	return flush(b)
