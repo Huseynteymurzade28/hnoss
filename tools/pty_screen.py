@@ -11,12 +11,17 @@ not colors.
     app.show("after jj Enter")
     app.quit()                  # sends q, checks exit code and termios
 """
-import os, pty, sys, time, termios, struct, fcntl, select, re, unicodedata
+import codecs, os, pty, sys, time, termios, struct, fcntl, select, re, unicodedata
 class Screen:
     def __init__(s,r,c): s.resize(r,c)
     def resize(s,r,c): s.r,s.c=r,c; s.g=[[" "]*c for _ in range(r)]; s.x=s.y=0
     def feed(s,data):
-        t=data.decode("utf-8","replace"); i=0
+        if not hasattr(s, "dec"): s.dec = codecs.getincrementaldecoder("utf-8")("replace"); s.tail = ""
+        t = s.tail + s.dec.decode(data); s.tail = ""
+        cut = t.rfind("\x1b")
+        if cut >= 0 and not re.match(r"\x1b\[[?<]?[0-9;]*[@-~]", t[cut:]) and len(t) - cut < 32:
+            t, s.tail = t[:cut], t[cut:]  # an escape sequence split across reads
+        i = 0
         while i<len(t):
             ch=t[i]
             if ch=="\x1b" and i+1<len(t) and t[i+1]=="[":
