@@ -44,6 +44,18 @@ hnoss.finish(&p)
 lines, widest := hnoss.measure(article, width = 40)   // same pen, nothing drawn
 ```
 
+Layout is plain Rect math, no solver and no allocation. Cut pieces off the edges,
+or split proportionally (a number is cells; `percent` and `fill` share the rest):
+
+```odin
+area := f.area
+header := hnoss.cut_top(&area, 1)
+sidebar := hnoss.cut_left(&area, 26)
+rows := hnoss.split(area, .Vertical, {hnoss.percent(40), hnoss.fill(), 3}, gap = 1)
+cols := hnoss.split(rows[0], .Horizontal, {hnoss.fill(2), hnoss.fill(1)})
+dialog := hnoss.center(f.area, 44, 7)
+```
+
 Widths come from a table generated from Unicode 16 data, and text is handled in
 grapheme clusters: `世界`, `é`, `👩‍💻`, `🇦🇿`, `🇹🇷`, `Salam, dünya!` all wrap and align correctly.
 
@@ -59,7 +71,7 @@ A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame
 | 2 | Buffer + diff renderer | done |
 | 3 | Input parser | done |
 | 4 | Style, text, unicode width | done |
-| 5 | Layout | |
+| 5 | Layout | done |
 | 6 | Widgets | |
 | 7 | Demo app (system monitor) | |
 
@@ -70,7 +82,7 @@ backend/   terminal I/O: raw mode, alt screen, size, write, input bytes
 input/     byte stream -> Event (Key, Mouse, Resize, Paste)
 buffer/    Cell, Buffer, double-buffer diff -> minimal ANSI
 style/     Color, Modifier, Style
-layout/    Rect, constraint solver, split
+layout/    Rect, cuts, split (cells / percent / fill), grid, center
 text/      unicode width, grapheme clusters, truncate
 pen/       styled text writer: wrap, align, scroll, markup
 widgets/   Block, Paragraph, List, Table, ...
@@ -85,6 +97,7 @@ bench/     render pipeline benchmark
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run layout        # cuts, split, grid, centered dialog
 ./build.sh run text          # pen + markup, reflows on resize
 ./build.sh run event_inspector  # shows every key / mouse / paste / resize event
 ./build.sh run plasma        # full-screen truecolor animation at 60 fps
