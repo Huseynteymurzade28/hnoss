@@ -36,10 +36,31 @@ fill :: proc(weight := 1) -> Size { return Fill{weight} }
 //     rounded so the pieces add up exactly. With no fills, the leftover
 //     space stays unused at the end.
 split :: proc(r: Rect, dir: Direction, sizes: [$N]Size, gap := 0) -> (out: [N]Rect) {
-	total := r.height if dir == .Vertical else r.width
-	avail := max(total - max(gap, 0) * (N - 1), 0)
+	frac: [N]int
+	s := sizes
+	split_into(r, dir, s[:], out[:], frac[:], gap)
+	return
+}
 
-	lengths: [N]int
+// split for a number of pieces known only at run time (table columns, ...).
+// The result is allocated with `allocator`.
+split_slice :: proc(r: Rect, dir: Direction, sizes: []Size, gap := 0, allocator := context.temp_allocator) -> []Rect {
+	out := make([]Rect, len(sizes), allocator)
+	frac := make([]int, len(sizes), context.temp_allocator)
+	split_into(r, dir, sizes, out, frac, gap)
+	return out
+}
+
+@(private)
+split_into :: proc(r: Rect, dir: Direction, sizes: []Size, out: []Rect, frac: []int, gap: int) {
+	n := len(sizes)
+	if n == 0 {
+		return
+	}
+	total := r.height if dir == .Vertical else r.width
+	avail := max(total - max(gap, 0) * (n - 1), 0)
+
+	// out[i].width holds each length until positions are assigned.
 	remaining := avail
 	fill_weight := 0
 	for s, i in sizes {
@@ -49,21 +70,20 @@ split :: proc(r: Rect, dir: Direction, sizes: [$N]Size, gap := 0) -> (out: [N]Re
 		case Percent: want = avail * clamp(v.value, 0, 100) / 100
 		case Fill:    fill_weight += max(v.weight, 0); continue
 		}
-		lengths[i] = min(want, remaining)
-		remaining -= lengths[i]
+		out[i].width = min(want, remaining)
+		remaining -= out[i].width
 	}
 
 	if fill_weight > 0 {
 		// Largest-remainder rounding: floor every share, then hand the
 		// leftover cells to the largest fractional parts (earlier first).
-		frac: [N]int
 		given := 0
 		for s, i in sizes {
 			if v, ok := s.(Fill); ok {
 				w := max(v.weight, 0)
-				lengths[i] = remaining * w / fill_weight
+				out[i].width = remaining * w / fill_weight
 				frac[i] = remaining * w % fill_weight
-				given += lengths[i]
+				given += out[i].width
 			}
 		}
 		for _ in 0 ..< remaining - given {
@@ -73,19 +93,19 @@ split :: proc(r: Rect, dir: Direction, sizes: [$N]Size, gap := 0) -> (out: [N]Re
 					best = i
 				}
 			}
-			lengths[best] += 1
+			out[best].width += 1
 			frac[best] = -1
 		}
 	}
 
 	pos := r.y if dir == .Vertical else r.x
-	for length, i in lengths {
+	for &o in out {
+		length := o.width
 		if dir == .Vertical {
-			out[i] = {r.x, pos, r.width, length}
+			o = {r.x, pos, r.width, length}
 		} else {
-			out[i] = {pos, r.y, length, r.height}
+			o = {pos, r.y, length, r.height}
 		}
 		pos += length + max(gap, 0)
 	}
-	return
 }

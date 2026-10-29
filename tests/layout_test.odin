@@ -102,3 +102,14 @@ layout_grid :: proc(t: ^testing.T) {
 	testing.expect_value(t, layout.grid_cell(Rect{0, 0, 10, 1}, 3, 1, 0, 0).width, 4)
 	testing.expect_value(t, last.x + last.width, 10)
 }
+
+@(test)
+layout_split_slice_matches_split :: proc(t: ^testing.T) {
+	r := Rect{0, 0, 77, 3}
+	fixed := layout.split(r, .Horizontal, {5, layout.percent(20), layout.fill(3), layout.fill(1)}, gap = 2)
+	sizes := []layout.Size{5, layout.percent(20), layout.fill(3), layout.fill(1)}
+	dyn := layout.split_slice(r, .Horizontal, sizes, gap = 2)
+	for i in 0 ..< 4 {
+		testing.expect_value(t, dyn[i], fixed[i])
+	}
+}
