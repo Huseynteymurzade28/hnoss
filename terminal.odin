@@ -14,6 +14,11 @@ Option :: backend.Option
 Options :: backend.Options
 DEFAULT_OPTIONS :: backend.DEFAULT_OPTIONS
 
+// Install in main so a panic restores the terminal *before* its message is
+// printed (otherwise the message lands on the alternate screen and is lost):
+//	context.assertion_failure_proc = hnoss.assertion_failure_proc
+assertion_failure_proc :: backend.assertion_failure_proc
+
 Event :: input.Event
 Key :: input.Key
 Key_Code :: input.Key_Code

@@ -13,6 +13,10 @@ rgb :: style.rgb
 hex :: style.hex
 gradient :: style.gradient
 Rgb :: style.Rgb
+Indexed :: style.Indexed
+Named_Color :: style.Named_Color
+Modifier :: style.Modifier
+Modifiers :: style.Modifiers
 
 // Starts writing text into `area` of the frame. Finish with `finish`.
 //
