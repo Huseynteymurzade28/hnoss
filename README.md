@@ -45,7 +45,7 @@ lines, widest := hnoss.measure(article, width = 40)   // same pen, nothing drawn
 ```
 
 Widths come from a table generated from Unicode 16 data, and text is handled in
-grapheme clusters: `世界`, `é`, `👩‍💻`, `🇹🇷` all wrap and align correctly.
+grapheme clusters: `世界`, `é`, `👩‍💻`, `🇦🇿`, `🇹🇷`, `Salam, dünya!` all wrap and align correctly.
 
 Rendering is double-buffered: each frame is diffed against the previous one and only
 changed cells are written, with cursor moves and SGR codes emitted only when needed,

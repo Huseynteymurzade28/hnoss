@@ -9,7 +9,7 @@ import "core:os"
 import hnoss "../.."
 import "../../backend"
 
-ARTICLE :: `Terminals are grids of cells. Every glyph takes one cell, except the wide ones: 世界 takes four, a family 👨‍👩‍👧‍👦 takes two, a flag 🇹🇷 takes two, and é built from e plus a combining accent takes one.
+ARTICLE :: `Terminals are grids of cells. Every glyph takes one cell, except the wide ones: 世界 takes four, a family 👨‍👩‍👧‍👦 takes two, a flag 🇦🇿 takes two, and so does 🇹🇷, and é built from e plus a combining accent takes one. Azerbaijani letters ə ğ ı ö ş ü ç are one cell each: Salam, dünya!
 
 hnoss measures text in grapheme clusters, so wrapping never splits a character in half and alignment is computed from what you actually see, not from bytes.
 

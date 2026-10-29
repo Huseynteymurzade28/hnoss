@@ -34,7 +34,8 @@ text_graphemes :: proc(t: ^testing.T) {
 	expect_cluster(t, "👍🏽!", "👍🏽", 2)                          // skin tone
 	expect_cluster(t, "👩‍💻 hi", "👩‍💻", 2)          // ZWJ sequence
 	expect_cluster(t, "👨‍👩‍👧‍👦.", "👨‍👩‍👧‍👦", 2)
-	expect_cluster(t, "🇹🇷🇯🇵", "🇹🇷", 2)                          // flag = RI pair
+	expect_cluster(t, "🇦🇿🇹🇷", "🇦🇿", 2)                          // flag = RI pair
+	expect_cluster(t, "🇹🇷🇦🇿", "🇹🇷", 2)
 	expect_cluster(t, "❤️", "❤️", 2)                    // VS16 widens
 	expect_cluster(t, "각x", "각", 2) // Hangul jamo L V T
 }
@@ -45,7 +46,8 @@ text_width_and_truncate :: proc(t: ^testing.T) {
 	testing.expect_value(t, text.width("hello"), 5)
 	testing.expect_value(t, text.width("世界!"), 5)
 	testing.expect_value(t, text.width("café"), 4)
-	testing.expect_value(t, text.width("🇹🇷 ok"), 5)
+	testing.expect_value(t, text.width("🇦🇿 ok"), 5)
+	testing.expect_value(t, text.width("Salam, dünya! ə"), 15)
 
 	p, w := text.truncate("hello", 3)
 	testing.expect_value(t, p, "hel")

@@ -26,7 +26,7 @@ rune_width :: proc "contextless" (r: rune) -> int {
 // practical subset of UAX #29 (https://unicode.org/reports/tr29/):
 //   - a base followed by combining marks / variation selectors / ZWJ,
 //   - ZWJ sequences (👩‍💻), emoji skin-tone modifiers (👍🏽),
-//   - regional-indicator pairs (flags, 🇹🇷), CR LF.
+//   - regional-indicator pairs (flags, 🇦🇿), CR LF.
 // `width` is the cluster's display width. VS16 (U+FE0F, emoji
 // presentation) widens a narrow base such as ❤ to 2.
 next_grapheme :: proc "contextless" (s: string) -> (cluster: string, width: int, rest: string) {
