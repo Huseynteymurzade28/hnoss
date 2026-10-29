@@ -89,6 +89,7 @@
 <tr><td><code>.Signal_Handlers</code></td><td>on</td><td>Restore the terminal on SIGINT/TERM/HUP/QUIT and crash signals, then re-raise.</td></tr>
 <tr><td><code>.Bracketed_Paste</code></td><td>on</td><td>A paste arrives as one <code>Paste</code> event instead of a burst of keys.</td></tr>
 <tr><td><code>.Mouse_Capture</code></td><td>off</td><td>Report clicks, drags, motion and wheel. While on, the terminal's own text selection needs Shift.</td></tr>
+<tr><td><code>.Kitty_Keyboard</code></td><td>on</td><td>Ask for the <a href="https://sw.kovidgoyal.net/kitty/keyboard-protocol/">kitty keyboard protocol</a>: unambiguous keys and instant <kbd>Esc</kbd>. Ignored by terminals that don't support it; <code>term.kitty_keyboard</code> tells you whether it is active.</td></tr>
 </table>
 <pre><code>term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})</code></pre>
 <p>The terminal is restored by <code>deinit</code>, when <code>main</code> returns, and on signals and crashes. For panics, install the provided assertion handler: it restores the terminal <em>before</em> the panic message is printed, so you can read it:</p>
@@ -113,7 +114,8 @@
     }
     <span class="k">if</span> hnoss.is_key(ev, .Up, {.Ctrl}) { <span class="c">/* Ctrl+Up */</span> }
 }</code></pre>
-<p>A lone <kbd>Esc</kbd> is ambiguous (it also starts every escape sequence), so hnoss waits <code>term.esc_timeout_ms</code> (25 ms) for more bytes before reporting it.</p>
+<p>In a classic terminal a lone <kbd>Esc</kbd> is ambiguous (it also starts every escape sequence), so hnoss waits <code>term.esc_timeout_ms</code> (25 ms) for more bytes before reporting it, and some combinations can't be told apart at all: <kbd>Ctrl</kbd>+<kbd>I</kbd> is <kbd>Tab</kbd>, <kbd>Ctrl</kbd>+<kbd>H</kbd> is <kbd>Backspace</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> is <kbd>Enter</kbd>.</p>
+<p>Terminals that speak the kitty keyboard protocol (kitty, foot, ghostty, WezTerm, recent Alacritty, …) fix both: with <code>.Kitty_Keyboard</code> (on by default) every one of those keys arrives distinctly and <kbd>Esc</kbd> is reported in well under a millisecond instead of after 25 ms. Nothing changes in your code; you just get more precise <code>Key</code> events.</p>
 
 <h2 id="text">Text &amp; the pen</h2>
 <p>Text is written with a <strong>pen</strong>: it flows styled text straight into an area of the frame, wrapping, aligning and scrolling as it goes. There is no intermediate text structure to build.</p>

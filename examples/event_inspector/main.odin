@@ -34,7 +34,7 @@ main :: proc() {
 
 	loop: for {
 		f := hnoss.begin_frame(&term)
-		draw(f, log[:], mouse_x, mouse_y)
+		draw(f, log[:], mouse_x, mouse_y, term.kitty_keyboard)
 		hnoss.end_frame(&term)
 		free_all(context.temp_allocator)
 
@@ -57,10 +57,12 @@ main :: proc() {
 	}
 }
 
-draw :: proc(f: ^hnoss.Frame, log: []string, mouse_x, mouse_y: int) {
+draw :: proc(f: ^hnoss.Frame, log: []string, mouse_x, mouse_y: int, kitty: bool) {
 	header := style.Style{fg = style.Named_Color.Black, bg = style.Named_Color.Cyan, add = {.Bold}}
 	buffer.set_style(f.buffer, {0, 0, f.area.width, 1}, header)
 	buffer.set_string(f.buffer, 1, 0, "hnoss event inspector  —  press keys, click, scroll, paste  —  Ctrl+C quits", header)
+	kb := "kitty keyboard: on " if kitty else "kitty keyboard: off "
+	buffer.set_string(f.buffer, f.area.width - len(kb), 0, kb, header)
 
 	rows := f.area.height - 1
 	first := max(len(log) - rows, 0)
