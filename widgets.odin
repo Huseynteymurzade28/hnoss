@@ -39,3 +39,9 @@ Column :: widgets.Column
 gauge :: widgets.gauge
 sparkline :: widgets.sparkline
 tabs :: widgets.tabs
+input :: widgets.input
+Input_State :: widgets.Input_State
+Input_Options :: widgets.Input_Options
+input_text :: widgets.input_text
+input_set :: widgets.input_set
+input_destroy :: widgets.input_destroy

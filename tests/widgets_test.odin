@@ -276,3 +276,116 @@ widget_tabs :: proc(t: ^testing.T) {
 	widgets.tabs(ui, ui.area, titles, &sel)
 	testing.expect_value(t, sel, 0) // clamped
 }
+
+@(private = "file")
+typed :: proc(s: string) -> []input.Event {
+	out := make([dynamic]input.Event, context.temp_allocator)
+	for r in s { append(&out, ch(r)) }
+	return out[:]
+}
+
+@(test)
+widget_input_typing_and_editing :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+
+	ui = frame(hs, ..typed("Salam dünya"))
+	testing.expect(t, widgets.input(ui, ui.area, &st))
+	testing.expect_value(t, widgets.input_text(&st), "Salam dünya")
+	testing.expect_value(t, hs.cursor, widgets.Cursor{11, 0, true})
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0) // all typed keys consumed
+
+	// Four ← from the end land just before "ü" (one step, though two bytes),
+	// so Backspace removes the "d".
+	ui = frame(hs, key(.Left), key(.Left), key(.Left), key(.Left), key(.Backspace))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "Salam ünya")
+
+	ui = frame(hs, ch('w', {.Ctrl})) // previous word, with its trailing space
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "ünya")
+
+	ui = frame(hs, key(.End))
+	widgets.input(ui, ui.area, &st)
+	ui = frame(hs, ..typed(" əğış"))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "ünya əğış")
+	ui = frame(hs, key(.Home), key(.Delete), ch('u', {.Ctrl}), ch('k', {.Ctrl}))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "")
+}
+
+@(test)
+widget_input_words_paste_submit :: proc(t: ^testing.T) {
+	hs := harness(30, 1)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	widgets.input_set(&st, "one two  three")
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+
+	ui = frame(hs, key(.Left, {.Ctrl}), key(.Left, {.Ctrl}))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, st.cursor, 4) // start of "two"
+
+	ui = frame(hs, input.Paste{"A\nB\tC\x07"}, key(.Enter))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "one A B Ctwo  three")
+	testing.expect(t, st.submitted)
+	expect_rows(t, screen_rows(&hs.buf), "one A B Ctwo  three")
+}
+
+@(test)
+widget_input_not_focused_ignores_keys :: proc(t: ^testing.T) {
+	hs := harness(10, 1)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	ui := frame(hs, ch('q'))
+	widgets.input(ui, ui.area, &st, {placeholder = "search…"})
+	testing.expect_value(t, widgets.input_text(&st), "")
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+	testing.expect(t, !hs.cursor.visible)
+	expect_rows(t, screen_rows(&hs.buf), "search…")
+}
+
+@(test)
+widget_input_scrolls_wide_text_and_mask :: proc(t: ^testing.T) {
+	hs := harness(5, 1)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	widgets.input_set(&st, "世界abc") // 7 cells
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+	ui = frame(hs)
+	widgets.input(ui, ui.area, &st)
+	// Caret after 7 cells in a 5-cell field: scroll 3, the cut 界 is not drawn.
+	testing.expect_value(t, st.scroll, 3)
+	expect_rows(t, screen_rows(&hs.buf), " abc")
+	testing.expect_value(t, hs.cursor.x, 4)
+
+	ui = frame(hs, key(.Home))
+	widgets.input(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "世界a")
+
+	ui = frame(hs)
+	widgets.input(ui, ui.area, &st, {mask = "•"})
+	expect_rows(t, screen_rows(&hs.buf), "•••••")
+}
+
+@(test)
+widget_input_click_places_cursor :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	widgets.input_set(&st, "hello")
+	ui := frame(hs, click(2, 0))
+	widgets.input(ui, ui.area, &st)
+	testing.expect(t, widgets.focused(ui, &st))
+	testing.expect_value(t, st.cursor, 2)
+	ui = frame(hs, click(15, 0))
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, st.cursor, 5)
+}
