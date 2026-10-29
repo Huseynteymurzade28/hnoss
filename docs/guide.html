@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide · hnoss</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+	<a class="brand" href="./"><img src="assets/logo.svg" alt="">hnoss</a>
+	<nav>
+		<a href="./">Home</a>
+		<a class="on" href="guide.html">Guide</a>
+		<a href="widgets.html">Widgets</a>
+		<a href="./#gallery">Gallery</a>
+	</nav>
+	<nav class="gh"><a href="https://github.com/Huseynteymurzade28/hnoss">GitHub ↗</a></nav>
+</header>
+
+<div class="layout">
+<aside class="side">
+	<h4>Start</h4>
+	<a href="#install">Install</a>
+	<a href="#loop">The frame loop</a>
+	<a href="#terminal">Terminal &amp; safety</a>
+	<h4>Building blocks</h4>
+	<a href="#events">Events</a>
+	<a href="#text">Text &amp; the pen</a>
+	<a href="#markup">Markup</a>
+	<a href="#style">Colors &amp; style</a>
+	<a href="#layout">Layout</a>
+	<h4>Widgets</h4>
+	<a href="#ui">The Ui context</a>
+	<a href="#focus">Focus &amp; consumed events</a>
+	<a href="#theme">Themes</a>
+	<h4>Under the hood</h4>
+	<a href="#memory">Memory</a>
+	<a href="#render">Rendering</a>
+	<a href="#unicode">Unicode</a>
+</aside>
+
+<main class="doc">
+<h1>Guide</h1>
+<p class="lead">Everything you need to build a terminal app with hnoss, from the first frame to themed widgets.</p>
+
+<h2 id="install">Install</h2>
+<p>hnoss is a plain Odin package with no dependencies beyond <code>core:</code> and <code>base:</code>. Put the repository next to your code (a git submodule works well) and import it:</p>
+<pre><code>git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
+<pre><code><span class="k">import</span> hnoss <span class="s">"libs/hnoss"</span></code></pre>
+<p>Linux is supported today. The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
+
+<h2 id="loop">The frame loop</h2>
+<p>hnoss is immediate mode: each frame you describe the whole screen, then hnoss compares it with the previous frame and writes only the difference.</p>
+<pre><code>main :: <span class="k">proc</span>() {
+    context.assertion_failure_proc = hnoss.assertion_failure_proc  <span class="c">// see below</span>
+
+    term, err := hnoss.init()
+    <span class="k">if</span> err != .None { <span class="k">return</span> }
+    <span class="k">defer</span> hnoss.deinit(&amp;term)
+
+    events: []hnoss.Event
+    running := <span class="k">true</span>
+    <span class="k">for</span> running {
+        f := hnoss.begin_frame(&amp;term)      <span class="c">// a blank frame, resized to the terminal</span>
+        ui := hnoss.ui(f, events)          <span class="c">// widgets for this frame</span>
+
+        hnoss.markup(f, {2, 1, 40, 1}, <span class="s">"[b]Salam[/], [cyan]dünya[/]!"</span>)
+
+        <span class="k">for</span> ev <span class="k">in</span> hnoss.unhandled(ui) {
+            <span class="k">if</span> hnoss.is_char(ev, <span class="s">'q'</span>) { running = <span class="k">false</span> }
+        }
+        hnoss.end_frame(&amp;term)             <span class="c">// diff + one write</span>
+        free_all(context.temp_allocator)   <span class="c">// everything per-frame lives here</span>
+        events = hnoss.poll_events(&amp;term, 16)
+        <span class="k">if</span> term.error != .None { <span class="k">break</span> }  <span class="c">// e.g. the terminal closed</span>
+    }
+}</code></pre>
+<p>Polling <em>after</em> drawing means the first frame appears immediately, and events from one poll are handled by the next frame's widgets. Use a timeout of <code>-1</code> to sleep until input arrives, or a number of milliseconds for animations.</p>
+
+<h2 id="terminal">Terminal &amp; safety</h2>
+<p><code>hnoss.init(opts)</code> opens <code>/dev/tty</code> (so redirecting stdout still works), switches to raw mode and the alternate screen and hides the cursor. Options are a bit set:</p>
+<table class="ref">
+<tr><th>Option</th><th>Default</th><th>Effect</th></tr>
+<tr><td><code>.Alt_Screen</code></td><td>on</td><td>Draw on the alternate screen; the shell's scrollback is untouched.</td></tr>
+<tr><td><code>.Hide_Cursor</code></td><td>on</td><td>Hide the cursor (a focused text input shows it at the caret).</td></tr>
+<tr><td><code>.Signal_Handlers</code></td><td>on</td><td>Restore the terminal on SIGINT/TERM/HUP/QUIT and crash signals, then re-raise.</td></tr>
+<tr><td><code>.Bracketed_Paste</code></td><td>on</td><td>A paste arrives as one <code>Paste</code> event instead of a burst of keys.</td></tr>
+<tr><td><code>.Mouse_Capture</code></td><td>off</td><td>Report clicks, drags, motion and wheel. While on, the terminal's own text selection needs Shift.</td></tr>
+</table>
+<pre><code>term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})</code></pre>
+<p>The terminal is restored by <code>deinit</code>, when <code>main</code> returns, and on signals and crashes. For panics, install the provided assertion handler: it restores the terminal <em>before</em> the panic message is printed, so you can read it:</p>
+<pre><code>context.assertion_failure_proc = hnoss.assertion_failure_proc</code></pre>
+<div class="note">Raw mode turns off signal generation, so <kbd>Ctrl</kbd>+<kbd>C</kbd> arrives as a key (<code>hnoss.is_char(ev, 'c', {.Ctrl})</code>) and your app decides what it means. A SIGINT sent from outside still restores the terminal.</div>
+
+<h2 id="events">Events</h2>
+<p><code>poll_events(&amp;term, timeout_ms)</code> returns every event that arrived, as a slice in the temp allocator:</p>
+<table class="ref">
+<tr><th>Event</th><th>Fields</th></tr>
+<tr><td><code>Key</code></td><td><code>code</code> (<code>.Char</code>, <code>.Enter</code>, <code>.Up</code>, <code>.F5</code>, …), <code>char</code> (for <code>.Char</code>), <code>mods</code> (<code>.Shift .Alt .Ctrl .Super</code>)</td></tr>
+<tr><td><code>Mouse</code></td><td><code>kind</code> (<code>.Press .Release .Drag .Move .Scroll</code>), <code>button</code>, <code>x</code>, <code>y</code>, <code>mods</code></td></tr>
+<tr><td><code>Paste</code></td><td><code>text</code>, the whole pasted string</td></tr>
+<tr><td><code>Resize</code></td><td><code>cols</code>, <code>rows</code> (frames resize themselves; this is informational)</td></tr>
+</table>
+<pre><code><span class="k">for</span> ev <span class="k">in</span> events {
+    <span class="k">switch</span> e <span class="k">in</span> ev {
+    <span class="k">case</span> hnoss.Key:    <span class="c">// ...</span>
+    <span class="k">case</span> hnoss.Mouse:  <span class="c">// ...</span>
+    <span class="k">case</span> hnoss.Paste:  <span class="c">// e.text</span>
+    <span class="k">case</span> hnoss.Resize: <span class="c">// e.cols, e.rows</span>
+    }
+    <span class="k">if</span> hnoss.is_key(ev, .Up, {.Ctrl}) { <span class="c">/* Ctrl+Up */</span> }
+}</code></pre>
+<p>A lone <kbd>Esc</kbd> is ambiguous (it also starts every escape sequence), so hnoss waits <code>term.esc_timeout_ms</code> (25 ms) for more bytes before reporting it.</p>
+
+<h2 id="text">Text &amp; the pen</h2>
+<p>Text is written with a <strong>pen</strong>: it flows styled text straight into an area of the frame, wrapping, aligning and scrolling as it goes. There is no intermediate text structure to build.</p>
+<pre><code>p := hnoss.pen(f, area, wrap = .Word, align = .Center)
+hnoss.write(&amp;p, <span class="s">"CPU "</span>, {add = {.Bold}})
+hnoss.write(&amp;p, fmt.tprintf(<span class="s">"%.0f%%"</span>, cpu), {fg = .Red})
+hnoss.newline(&amp;p)
+lines := hnoss.finish(&amp;p)       <span class="c">// required: places the last line</span></code></pre>
+<table class="ref">
+<tr><th>Wrap</th><th>Behavior</th></tr>
+<tr><td><code>.Word</code></td><td>Break at spaces; a word longer than the line breaks anywhere.</td></tr>
+<tr><td><code>.Char</code></td><td>Break anywhere.</td></tr>
+<tr><td><code>.Clip</code></td><td>No wrapping; what doesn't fit is cut.</td></tr>
+<tr><td><code>.Ellipsis</code></td><td>No wrapping; cut lines end in <code>…</code>.</td></tr>
+</table>
+<p><code>scroll = n</code> skips the first <code>n</code> lines. <code>hnoss.measure(s, width)</code> returns the number of lines and the widest line without drawing anything, which is handy for sizing and scrollbars.</p>
+
+<h2 id="markup">Markup</h2>
+<p><code>hnoss.markup(f, area, src)</code> (or <code>hnoss.write_markup(&amp;pen, src)</code>) interprets inline tags. A tag is a list of attributes applied on top of the surrounding style; <code>[/]</code> closes the innermost one.</p>
+<pre><code>hnoss.markup(f, area, <span class="s">"[b]CPU[/] [red]92%[/]  [black on #ffcc00] WARN [/]  [i dim]idle[/]"</span>)</code></pre>
+<table class="ref">
+<tr><th>Attribute</th><th>Meaning</th></tr>
+<tr><td><code>b d i u r s</code></td><td>bold, dim, italic, underline, reverse, strike (also <code>bold</code>, <code>italic</code>, … and <code>blink</code>, <code>hidden</code>)</td></tr>
+<tr><td><code>red</code> … <code>white</code>, <code>bright_red</code></td><td>the 16 terminal colors; <code>default</code> resets</td></tr>
+<tr><td><code>#ff8800</code> · <code>@208</code></td><td>truecolor · 256-color index</td></tr>
+<tr><td><code>on &lt;color&gt;</code></td><td>background</td></tr>
+<tr><td><code>[[</code></td><td>a literal <code>[</code></td></tr>
+</table>
+<p>Brackets that are not a valid tag stay as text, so <code>"page [1/3]"</code> or <code>"[x] done"</code> need no escaping.</p>
+
+<h2 id="style">Colors &amp; style</h2>
+<p>A <code>Style</code> is a patch: non-nil colors replace, <code>add</code> modifiers switch on, <code>sub</code> switch off.</p>
+<pre><code>s := hnoss.Style{fg = .Cyan, bg = hnoss.rgb(20, 30, 40), add = {.Bold}}
+c1: hnoss.Color = .Bright_Red            <span class="c">// 16 colors (+ .Reset)</span>
+c2: hnoss.Color = hnoss.Indexed(208)     <span class="c">// 256 colors</span>
+c3: hnoss.Color = hnoss.hex(0x22848c)    <span class="c">// truecolor</span>
+c4 := hnoss.gradient(stops, 0.7)          <span class="c">// interpolate []Rgb at t</span></code></pre>
+
+<h2 id="layout">Layout</h2>
+<p>Layout is plain <code>Rect</code> math: no solver, no allocation. The natural immediate-mode way is to <strong>cut</strong> pieces off the edges:</p>
+<pre><code>area := f.area
+header  := hnoss.cut_top(&amp;area, 1)
+status  := hnoss.cut_bottom(&amp;area, 1)
+sidebar := hnoss.cut_left(&amp;area, 30)
+<span class="c">// area is now the middle</span></code></pre>
+<p>For proportions, <strong>split</strong> into a fixed-size array. A plain number is cells; <code>percent(p)</code> and <code>fill(weight)</code> share the rest:</p>
+<pre><code>rows := hnoss.split(area, .Vertical, {3, hnoss.fill(), hnoss.percent(25)}, gap = 1)
+cols := hnoss.split(rows[1], .Horizontal, {hnoss.fill(2), hnoss.fill(1)})</code></pre>
+<ul>
+<li>Cells and percents are served first come, first served; if space runs out, later ones shrink.</li>
+<li>Fills share what is left by weight, rounded so the pieces always add up exactly.</li>
+<li><code>split_slice</code> does the same for a count known at run time.</li>
+</ul>
+<p>Helpers: <code>inset(r, n)</code>, <code>pad(r, top, right, bottom, left)</code>, <code>center(r, w, h)</code> for dialogs, and <code>grid_cell(r, cols, rows, col, row, gap)</code>.</p>
+
+<h2 id="ui">The Ui context</h2>
+<p>Widgets are procedures that take the frame's <code>^Ui</code>. Calling one draws it, handles the input meant for it and returns what happened:</p>
+<pre><code>ui := hnoss.ui(f, events)                        <span class="c">// optional: theme</span>
+inner := hnoss.box(ui, area, <span class="s">"[b]Processes[/]"</span>)
+<span class="k">if</span> hnoss.list(ui, inner, names, &amp;state) {       <span class="c">// true: selection changed</span>
+    <span class="c">// ...</span>
+}
+<span class="k">if</span> state.activated { <span class="c">/* Enter on the selection */</span> }</code></pre>
+<p>Stateful widgets take a pointer to state you own (<code>List_State</code>, <code>Input_State</code>, …). See the <a href="widgets.html">widget reference</a> for each one.</p>
+
+<h2 id="focus">Focus &amp; consumed events</h2>
+<p>The state pointer is also the widget's identity. Only the focused widget receives keys; the mouse works everywhere (and a click focuses).</p>
+<pre><code>hnoss.focus(ui, &amp;search)                       <span class="c">// give focus</span>
+hnoss.focus_order(ui, {&amp;list, &amp;search, &amp;tabs})   <span class="c">// Tab / Shift+Tab cycle</span>
+<span class="k">if</span> hnoss.focused(ui, &amp;search) { <span class="c">/* ... */</span> }</code></pre>
+<p>A widget <em>consumes</em> the events it uses. <code>hnoss.unhandled(ui)</code> returns the rest, so app shortcuts never fire while you type into a field. Call it after the widgets.</p>
+
+<h2 id="theme">Themes</h2>
+<p>Every color a widget uses comes from <code>ui.theme</code>. Copy the default, change what you like, and pass it to <code>hnoss.ui</code>:</p>
+<pre><code>t := hnoss.DEFAULT_THEME
+t.border_kind    = .Rounded                 <span class="c">// .Plain .Double .Thick .None</span>
+t.border_focused = {fg = hnoss.hex(0x5fc4c9)}
+t.selected       = {fg = .Black, bg = hnoss.hex(0x5fc4c9), add = {.Bold}}
+t.header         = {fg = hnoss.hex(0xf08a6a), add = {.Bold}}
+ui := hnoss.ui(f, events, t)</code></pre>
+<p>Fields: <code>text muted accent border border_focused title selected selected_unfocused header gauge_filled gauge_empty tab tab_selected input scrollbar_track scrollbar_thumb</code>, plus <code>border_kind</code>.</p>
+
+<h2 id="memory">Memory</h2>
+<ul>
+<li>Library procedures take an allocator parameter or use <code>context.allocator</code>; the terminal's buffers live until <code>deinit</code>.</li>
+<li>Per-frame data (event slices, paste text, widget scratch, <code>fmt.tprintf</code>) uses <code>context.temp_allocator</code>. Call <code>free_all(context.temp_allocator)</code> once per frame.</li>
+<li>The only global state is the terminal-restore hook signal handlers need.</li>
+<li><code>Input_State.text</code> grows with your allocator; free it with <code>hnoss.input_destroy</code>.</li>
+</ul>
+
+<h2 id="render">Rendering</h2>
+<p>Each frame is drawn into a back buffer of cells and diffed against the front buffer:</p>
+<ul>
+<li>a cursor move is emitted only when the next write isn't contiguous, and colors only when they change;</li>
+<li>the frame is wrapped in synchronized output (DEC 2026), so the terminal never shows a half-drawn frame;</li>
+<li>everything goes out in one <code>write(2)</code>.</li>
+</ul>
+<p>A 200×60 frame where every cell changes truecolor diffs in about 2 ms; an unchanged frame in under 0.1 ms. Run <code>./build.sh bench</code> to measure yours.</p>
+
+<h2 id="unicode">Unicode</h2>
+<p>Display widths come from a table generated from Unicode 16 data (<code>tools/gen_width.py</code>). Text is handled in grapheme clusters: combining marks, ZWJ sequences (<code>👩‍💻</code>), skin tones (<code>👍🏽</code>) and flags (<code>🇦🇿</code>) each count as one glyph, and wide characters take two cells. Wrapping never splits a glyph, and alignment is computed from what you see, not from bytes.</p>
+</main>
+</div>
+
+<footer>hnoss · MIT licensed · <a href="https://github.com/Huseynteymurzade28/hnoss">GitHub</a></footer>
+</body>
+</html>

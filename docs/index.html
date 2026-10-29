@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hnoss: immediate-mode TUI for Odin</title>
+<meta name="description" content="hnoss is an immediate-mode, widget-rich terminal UI library written in pure Odin.">
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+	<a class="brand" href="./"><img src="assets/logo.svg" alt="">hnoss</a>
+	<nav>
+		<a class="on" href="./">Home</a>
+		<a href="guide.html">Guide</a>
+		<a href="widgets.html">Widgets</a>
+		<a href="#gallery">Gallery</a>
+	</nav>
+	<nav class="gh"><a href="https://github.com/Huseynteymurzade28/hnoss">GitHub ↗</a></nav>
+</header>
+
+<div class="hero">
+	<img class="logo" src="assets/logo.svg" alt="hnoss logo">
+	<h1><span>hnoss</span></h1>
+	<p class="tag">An immediate-mode terminal UI library for Odin. Pure Odin, no C, batteries included.</p>
+	<div class="cta">
+		<a class="btn primary" href="guide.html">Get started</a>
+		<a class="btn" href="widgets.html">Widget reference</a>
+		<a class="btn" href="https://github.com/Huseynteymurzade28/hnoss">Source</a>
+	</div>
+</div>
+
+<div class="shot">
+	<img src="monitor-odlar-yurdu.svg" alt="hnoss system monitor">
+	<p class="caption"><code>examples/monitor</code>: a live system monitor reading <code>/proc</code>, theme <b>Odlar Yurdu</b>.</p>
+</div>
+
+<section class="band">
+	<h2>Why hnoss</h2>
+	<p class="lead">Describe the whole UI every frame; hnoss works out what changed and writes only that.</p>
+	<div class="features">
+		<div class="feature"><h3><b>◆</b> Pure Odin</h3><p>Only <code>core:</code> and <code>base:</code>. Raw syscalls on Linux, no ncurses, no termbox, no libc bindings.</p></div>
+		<div class="feature"><h3><b>◆</b> Widgets are procedures</h3><p>Calling one draws it, handles its own keys and mouse, and returns what happened. State is yours.</p></div>
+		<div class="feature"><h3><b>◆</b> Fast by default</h3><p>Double-buffered diff, minimal cursor moves and SGR, synchronized output, one write per frame.</p></div>
+		<div class="feature"><h3><b>◆</b> Text done right</h3><p>Unicode 16 widths and grapheme clusters: <code>世界</code>, <code>é</code>, <code>👩‍💻</code>, <code>🇦🇿</code> wrap and align correctly.</p></div>
+		<div class="feature"><h3><b>◆</b> Never a broken terminal</h3><p>Raw mode, alt screen and cursor are restored on exit, panic, SIGINT, SIGTERM and crashes.</p></div>
+		<div class="feature"><h3><b>◆</b> Explicit memory</h3><p>Allocators are parameters; per-frame scratch lives in <code>context.temp_allocator</code>. No hidden globals.</p></div>
+	</div>
+</section>
+
+<section class="band" id="gallery">
+	<h2>Gallery</h2>
+	<p class="lead">Every image is the real program, captured with <code>tools/ansi_svg.py</code>.</p>
+	<div class="gallery">
+		<div class="tile"><img src="gallery/showcase.svg" alt=""><h3>Widgets</h3><p>Tabs, markup list, braille graph, table, gauges, sparkline, input. <code>run showcase</code></p></div>
+		<div class="tile"><img src="gallery/plasma.svg" alt=""><h3>Truecolor at 60 fps</h3><p>Every cell changes every frame; the diff keeps it smooth. <code>run plasma</code></p></div>
+		<div class="tile"><img src="gallery/text.svg" alt=""><h3>Text &amp; markup</h3><p>Word wrap by grapheme, alignment, <code>[b red]markup[/]</code>. <code>run text</code></p></div>
+		<div class="tile"><img src="gallery/layout.svg" alt=""><h3>Layout</h3><p>Edge cuts, proportional split, grid, centered dialog. <code>run layout</code></p></div>
+		<div class="tile"><img src="gallery/list.svg" alt=""><h3>Stateful widgets</h3><p>Keyboard, mouse and focus handled for you. <code>run w_list</code></p></div>
+		<div class="tile"><img src="gallery/events.svg" alt=""><h3>Input</h3><p>Keys with modifiers, SGR mouse, bracketed paste. <code>run event_inspector</code></p></div>
+		<div class="tile"><img src="monitor-xezer.svg" alt=""><h3>Themes</h3><p>One assignment restyles everything. The monitor in <b>Xəzər</b>.</p></div>
+	</div>
+</section>
+
+<section class="band">
+	<h2>Thirty seconds of code</h2>
+	<pre><code><span class="k">import</span> hnoss <span class="s">"hnoss"</span>
+
+main :: <span class="k">proc</span>() {
+    term, _ := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})
+    <span class="k">defer</span> hnoss.deinit(&amp;term)
+
+    cities := []string{<span class="s">"Bakı"</span>, <span class="s">"Gəncə"</span>, <span class="s">"Şəki"</span>, <span class="s">"Lənkəran"</span>}
+    list: hnoss.List_State
+    events: []hnoss.Event
+    <span class="k">for</span> {
+        f := hnoss.begin_frame(&amp;term)
+        ui := hnoss.ui(f, events)
+        inner := hnoss.box(ui, hnoss.inset(f.area, 1), <span class="s">"🇦🇿 [b]Cities[/]"</span>)
+        hnoss.focus(ui, &amp;list)
+        hnoss.list(ui, inner, cities, &amp;list)        <span class="c">// ↑↓, click, wheel</span>
+
+        <span class="k">for</span> ev <span class="k">in</span> hnoss.unhandled(ui) {
+            <span class="k">if</span> hnoss.is_char(ev, <span class="s">'q'</span>) { <span class="k">return</span> }
+        }
+        hnoss.end_frame(&amp;term)                      <span class="c">// diff, one write</span>
+        free_all(context.temp_allocator)
+        events = hnoss.poll_events(&amp;term, -1)
+    }
+}</code></pre>
+	<p>Next: the <a href="guide.html">guide</a> walks through the frame loop, text, layout and widgets.</p>
+</section>
+
+<footer>hnoss · MIT licensed · made with Odin</footer>
+</body>
+</html>

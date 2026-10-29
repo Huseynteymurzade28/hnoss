@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Widgets · hnoss</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+	<a class="brand" href="./"><img src="assets/logo.svg" alt="">hnoss</a>
+	<nav>
+		<a href="./">Home</a>
+		<a href="guide.html">Guide</a>
+		<a class="on" href="widgets.html">Widgets</a>
+		<a href="./#gallery">Gallery</a>
+	</nav>
+	<nav class="gh"><a href="https://github.com/Huseynteymurzade28/hnoss">GitHub ↗</a></nav>
+</header>
+
+<div class="layout">
+<aside class="side">
+	<h4>Containers &amp; text</h4>
+	<a href="#box">box</a>
+	<a href="#label">label</a>
+	<a href="#paragraph">paragraph</a>
+	<h4>Selection</h4>
+	<a href="#list">list</a>
+	<a href="#table">table</a>
+	<a href="#tabs">tabs</a>
+	<a href="#scrollbar">scrollbar</a>
+	<h4>Data</h4>
+	<a href="#gauge">gauge</a>
+	<a href="#sparkline">sparkline</a>
+	<a href="#graph">graph</a>
+	<h4>Editing</h4>
+	<a href="#input">input</a>
+</aside>
+
+<main class="doc">
+<h1>Widgets</h1>
+<p class="lead">Every widget is a procedure taking the frame's <code>^Ui</code>. Stateful ones take a pointer to state you own, which is also their identity for <a href="guide.html#focus">focus</a>. Each has a runnable example: <code>./build.sh run w_&lt;name&gt;</code>.</p>
+
+<h2 id="box">box</h2>
+<div class="widget">
+<div class="sig">box :: proc(ui: ^Ui, area: Rect, title := "", opts := Box_Options{}) -&gt; (inner: Rect)</div>
+<p>A border with an optional markup title. Returns the area inside it, ready for the next widget.</p>
+<img src="widgets/box.svg" alt="box">
+<table class="ref">
+<tr><th>Box_Options</th><th></th></tr>
+<tr><td><code>border</code></td><td><code>.Plain .Rounded .Double .Thick .None</code> (default: <code>theme.border_kind</code>)</td></tr>
+<tr><td><code>focused</code></td><td>draw with <code>theme.border_focused</code></td></tr>
+<tr><td><code>align</code></td><td>title alignment</td></tr>
+<tr><td><code>style</code> · <code>fill</code></td><td>extra border style · blank the inside with this style first</td></tr>
+</table>
+</div>
+
+<h2 id="label">label</h2>
+<div class="widget">
+<div class="sig">label :: proc(ui: ^Ui, area: Rect, src: string, align := .Left, wrap := .Word) -&gt; (lines: int)</div>
+<p>One-off <a href="guide.html#markup">markup</a> text in the theme's text style. For finer control use a <a href="guide.html#text">pen</a>.</p>
+</div>
+
+<h2 id="paragraph">paragraph</h2>
+<div class="widget">
+<div class="sig">paragraph :: proc(ui: ^Ui, area: Rect, src: string, state: ^Scroll_State = nil, opts := Paragraph_Options{}) -&gt; (total_lines: int)</div>
+<p>Wrapped, scrolling markup text with an optional scrollbar. Clicking it gives it focus.</p>
+<img src="widgets/paragraph.svg" alt="paragraph">
+<p class="keys">Keys (focused): <kbd>↑</kbd> <kbd>↓</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd> · mouse wheel when hovered. Options: <code>wrap</code>, <code>align</code>, <code>scrollbar</code>.</p>
+</div>
+
+<h2 id="list">list</h2>
+<div class="widget">
+<div class="sig">list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := List_Options{}) -&gt; (changed: bool)</div>
+<p>A selectable, scrolling list. Returns <code>true</code> when the selection changed; <code>state.activated</code> is set for the frame <kbd>Enter</kbd> is pressed.</p>
+<img src="gallery/list.svg" alt="list">
+<p class="keys">Keys (focused): <kbd>↑</kbd><kbd>↓</kbd> or <kbd>k</kbd><kbd>j</kbd>, <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd>, <kbd>Enter</kbd> · click selects, wheel scrolls the view.</p>
+<table class="ref">
+<tr><th>Field</th><th></th></tr>
+<tr><td><code>List_State</code></td><td><code>selected</code>, <code>offset</code> (first visible), <code>activated</code></td></tr>
+<tr><td><code>List_Options</code></td><td><code>marker</code> (default <code>"› "</code>), <code>markup</code> (items are markup), <code>scrollbar</code></td></tr>
+</table>
+</div>
+
+<h2 id="table">table</h2>
+<div class="widget">
+<div class="sig">table :: proc(ui: ^Ui, area: Rect, columns: []Column, rows: [][]string, state: ^Table_State, opts := Table_Options{}) -&gt; (changed: bool)</div>
+<p>Rows of cells under a header. Columns are sized like a <a href="guide.html#layout">split</a>; long cells end in <code>…</code>. Navigation and mouse work like <a href="#list">list</a>.</p>
+<img src="widgets/table.svg" alt="table">
+<pre><code>cols := []hnoss.Column{
+    {title = <span class="s">"PID"</span>,  width = 7, align = .Right},
+    {title = <span class="s">"Name"</span>, width = hnoss.fill()},
+    {title = <span class="s">"CPU"</span>,  width = hnoss.percent(10), align = .Right},
+}
+hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true</span>})</code></pre>
+</div>
+
+<h2 id="tabs">tabs</h2>
+<div class="widget">
+<div class="sig">tabs :: proc(ui: ^Ui, area: Rect, titles: []string, selected: ^int) -&gt; (changed: bool)</div>
+<p>A row of markup titles. The <code>^int</code> is the state.</p>
+<img src="widgets/tabs.svg" alt="tabs">
+<p class="keys">Keys (focused): <kbd>←</kbd><kbd>→</kbd> or <kbd>h</kbd><kbd>l</kbd>, <kbd>Home</kbd> <kbd>End</kbd> · click a title.</p>
+</div>
+
+<h2 id="scrollbar">scrollbar</h2>
+<div class="widget">
+<div class="sig">scrollbar :: proc(ui: ^Ui, area: Rect, total, visible: int, offset: ^int) -&gt; (changed: bool)</div>
+<p>A vertical bar for <code>total</code> lines of which <code>visible</code> fit. Click the track to jump, drag the thumb (dragging keeps working outside the bar), or use the wheel. <code>paragraph</code>, <code>list</code> and <code>table</code> can draw one for you.</p>
+<img src="widgets/scrollbar.svg" alt="scrollbar">
+</div>
+
+<h2 id="gauge">gauge</h2>
+<div class="widget">
+<div class="sig">gauge :: proc(ui: ^Ui, area: Rect, ratio: f64, label: Maybe(string) = nil)</div>
+<p>A progress bar of any height, filled in eighths of a cell. The label (default: the percentage) is centered and drawn inverted where it covers the bar.</p>
+<img src="widgets/gauge.svg" alt="gauge">
+</div>
+
+<h2 id="sparkline">sparkline</h2>
+<div class="widget">
+<div class="sig">sparkline :: proc(ui: ^Ui, area: Rect, data: []f64, max_value := 0.0, st: Maybe(Style) = nil)</div>
+<p>The most recent values as bars, newest on the right, eight levels per row. <code>max_value = 0</code> scales to the largest value shown.</p>
+<img src="widgets/sparkline.svg" alt="sparkline">
+</div>
+
+<h2 id="graph">graph</h2>
+<div class="widget">
+<div class="sig">graph :: proc(ui: ^Ui, area: Rect, data: []f64, opts := Graph_Options{})</div>
+<p>An area chart in braille dots: each cell is 2 samples wide and 4 dots tall. Colors run along an optional gradient from bottom to top; <code>downward</code> grows from the top edge, for mirrored charts like the monitor's network panel.</p>
+<pre><code>hnoss.graph(ui, area, history[:], {
+    max_value = 100,
+    gradient  = []hnoss.Rgb{{80, 250, 123}, {241, 250, 140}, {255, 85, 85}},
+})</code></pre>
+</div>
+
+<h2 id="input">input</h2>
+<div class="widget">
+<div class="sig">input :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Input_Options{}) -&gt; (changed: bool)</div>
+<p>A single-line text field. Edits by grapheme, scrolls to keep the caret visible and shows the terminal cursor at it. Keys it uses are consumed, so typing <kbd>q</kbd> into it never quits your app.</p>
+<img src="widgets/input.svg" alt="input">
+<table class="ref">
+<tr><th>Keys</th><th></th></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> <kbd>Ctrl</kbd>+<kbd>A</kbd>/<kbd>E</kbd></td><td>move</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>←</kbd>/<kbd>→</kbd> · <kbd>Alt</kbd>+<kbd>B</kbd>/<kbd>F</kbd></td><td>move by word</td></tr>
+<tr><td><kbd>Backspace</kbd> <kbd>Delete</kbd> <kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>delete a character</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd> · <kbd>Alt</kbd>+<kbd>Backspace</kbd></td><td>delete the previous word</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>U</kbd> / <kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>delete to start / to end</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>sets <code>state.submitted</code> for this frame</td></tr>
+<tr><td>paste</td><td>inserted with newlines turned into spaces</td></tr>
+</table>
+<pre><code>search: hnoss.Input_State
+<span class="k">defer</span> hnoss.input_destroy(&amp;search)
+<span class="k">if</span> hnoss.input(ui, field, &amp;search, {placeholder = <span class="s">"filter…"</span>}) {
+    filter(hnoss.input_text(&amp;search))
+}</code></pre>
+<p>Options: <code>placeholder</code>, <code>mask</code> (e.g. <code>"•"</code> for passwords). Helpers: <code>input_text</code>, <code>input_set</code>, <code>input_destroy</code>.</p>
+</div>
+</main>
+</div>
+
+<footer>hnoss · MIT licensed · <a href="https://github.com/Huseynteymurzade28/hnoss">GitHub</a></footer>
+</body>
+</html>
