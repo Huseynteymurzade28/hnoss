@@ -26,7 +26,6 @@ main :: proc() {
 	}
 	defer hnoss.deinit(&term)
 
-	input: [256]u8
 	paused := false
 	t: f64
 	fps: f64 = 60
@@ -49,21 +48,20 @@ main :: proc() {
 		if hnoss.end_frame(&term) != .None {
 			break
 		}
-		free_all(context.temp_allocator)
 
-		// Sleep in poll(2) until the next frame is due, waking early for input.
+		// Sleep until the next frame is due, waking early for input.
 		remaining := FRAME_TIME - time.tick_since(frame_start)
-		res, rerr := backend.read(&term.backend, input[:], max(int(remaining / time.Millisecond), 0))
-		if rerr != .None {
-			break
-		}
-		for c in input[:res.n] {
-			switch c {
-			case 'q', 0x03:
+		for ev in hnoss.poll_events(&term, max(int(remaining / time.Millisecond), 0)) {
+			switch {
+			case hnoss.is_char(ev, 'q'), hnoss.is_char(ev, 'c', {.Ctrl}):
 				break loop
-			case ' ':
+			case hnoss.is_char(ev, ' '):
 				paused = !paused
 			}
+		}
+		free_all(context.temp_allocator)
+		if term.error != .None {
+			break
 		}
 	}
 }
