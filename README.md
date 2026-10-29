@@ -25,6 +25,9 @@ Early work. See the roadmap below. What exists today:
 term, err := hnoss.init()
 defer hnoss.deinit(&term)
 for running {
+    for ev in hnoss.poll_events(&term, 16) {   // keys, mouse, paste, resize
+        if hnoss.is_char(ev, 'q') { running = false }
+    }
     f := hnoss.begin_frame(&term)          // picks up resizes
     buffer.set_string(f.buffer, 2, 1, "hello", {fg = style.Named_Color.Cyan, add = {.Bold}})
     hnoss.end_frame(&term)                 // diff vs last frame, one write
@@ -41,7 +44,7 @@ A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame
 | 0 | Scaffold | done |
 | 1 | Backend + restore safety | done |
 | 2 | Buffer + diff renderer | done |
-| 3 | Input parser | |
+| 3 | Input parser | done |
 | 4 | Style, text, unicode width | |
 | 5 | Layout | |
 | 6 | Widgets | |
@@ -68,6 +71,7 @@ bench/     render pipeline benchmark
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run event_inspector  # shows every key / mouse / paste / resize event
 ./build.sh run plasma        # full-screen truecolor animation at 60 fps
 ./build.sh run backend_box   # q / Ctrl+C quits, p panics (terminal still comes back clean)
 ./build.sh bench             # time fill + diff for a 200x60 frame
