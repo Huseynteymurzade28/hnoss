@@ -56,6 +56,31 @@ cols := hnoss.split(rows[0], .Horizontal, {hnoss.fill(2), hnoss.fill(1)})
 dialog := hnoss.center(f.area, 44, 7)
 ```
 
+Widgets are procedures. Calling one draws it, handles the input meant for it and
+reports what happened. State you own is passed by pointer and doubles as the
+widget's identity for focus; events a widget consumes don't reach the app:
+
+```odin
+events := hnoss.poll_events(&term, 16)
+f := hnoss.begin_frame(&term)
+ui := hnoss.ui(f, events)
+hnoss.focus_order(ui, {&list, &search})        // Tab / Shift+Tab
+
+if hnoss.list(ui, hnoss.box(ui, left, "Processes"), names, &list) {
+    // selection changed (keys, click, wheel)
+}
+if hnoss.input(ui, field, &search, {placeholder = "filter…"}) {
+    // text changed; typing "q" here does not quit
+}
+hnoss.gauge(ui, bar, cpu)
+for ev in hnoss.unhandled(ui) {
+    if hnoss.is_char(ev, 'q') { running = false }
+}
+hnoss.end_frame(&term)
+```
+
+All colors come from `ui.theme`, so restyling an app is one assignment.
+
 Widths come from a table generated from Unicode 16 data, and text is handled in
 grapheme clusters: `世界`, `é`, `👩‍💻`, `🇦🇿`, `🇹🇷`, `Salam, dünya!` all wrap and align correctly.
 
@@ -72,7 +97,7 @@ A 200x60 frame where every cell changes color diffs in ~2 ms; an unchanged frame
 | 3 | Input parser | done |
 | 4 | Style, text, unicode width | done |
 | 5 | Layout | done |
-| 6 | Widgets | |
+| 6 | Widgets | done |
 | 7 | Demo app (system monitor) | |
 
 ## Layout
@@ -85,7 +110,7 @@ style/     Color, Modifier, Style
 layout/    Rect, cuts, split (cells / percent / fill), grid, center
 text/      unicode width, grapheme clusters, truncate
 pen/       styled text writer: wrap, align, scroll, markup
-widgets/   Block, Paragraph, List, Table, ...
+widgets/   box, label, paragraph, list, table, gauge, sparkline, tabs, scrollbar, input
 examples/  one runnable example per feature
 tests/     `odin test` suites
 bench/     render pipeline benchmark
@@ -97,6 +122,8 @@ bench/     render pipeline benchmark
 ./build.sh            # check + test + build examples into bin/
 ./build.sh check
 ./build.sh test
+./build.sh run w_list        # one example per widget: w_box w_paragraph w_list w_table
+                             #   w_gauge w_sparkline w_tabs w_scrollbar w_input
 ./build.sh run layout        # cuts, split, grid, centered dialog
 ./build.sh run text          # pen + markup, reflows on resize
 ./build.sh run event_inspector  # shows every key / mouse / paste / resize event
