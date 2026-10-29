@@ -4,6 +4,7 @@ import "core:testing"
 import "../buffer"
 import "../input"
 import "../layout"
+import "../style"
 import "../widgets"
 
 // A tiny harness: a buffer, persistent widget memory and a cursor, so a
@@ -388,4 +389,29 @@ widget_input_click_places_cursor :: proc(t: ^testing.T) {
 	ui = frame(hs, click(15, 0))
 	widgets.input(ui, ui.area, &st)
 	testing.expect_value(t, st.cursor, 5)
+}
+
+@(test)
+widget_graph_braille :: proc(t: ^testing.T) {
+	hs := harness(2, 1)
+	ui := frame(hs)
+	// 4 samples in 2 cells; heights 1..4 dots out of 4.
+	widgets.graph(ui, ui.area, {1, 2, 3, 4}, {max_value = 4})
+	// cell 0: left 1 dot (0x40), right 2 dots (0x80|0x20) -> U+28E0
+	// cell 1: left 3 dots (0x40|0x04|0x02), right 4 (0x80|0x20|0x10|0x08) -> U+28FE
+	expect_rows(t, screen_rows(&hs.buf), "⣠⣾")
+
+	ui = frame(hs)
+	widgets.graph(ui, ui.area, {4}, {max_value = 4, downward = true})
+	expect_rows(t, screen_rows(&hs.buf), " \u28b8") // the newest sample fills the very last dot column
+}
+
+@(test)
+style_gradient_stops :: proc(t: ^testing.T) {
+	stops := []style.Rgb{{0, 0, 0}, {200, 100, 0}, {200, 200, 200}}
+	testing.expect_value(t, style.gradient(stops, 0), style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, style.gradient(stops, 0.25), style.Color(style.Rgb{100, 50, 0}))
+	testing.expect_value(t, style.gradient(stops, 1), style.Color(style.Rgb{200, 200, 200}))
+	testing.expect_value(t, style.gradient(stops, 7), style.Color(style.Rgb{200, 200, 200}))
+	testing.expect_value(t, style.hex(0xff8800), style.Rgb{255, 136, 0})
 }

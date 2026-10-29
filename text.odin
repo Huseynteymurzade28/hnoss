@@ -10,6 +10,9 @@ Wrap :: pen_.Wrap
 Align :: pen_.Align
 
 rgb :: style.rgb
+hex :: style.hex
+gradient :: style.gradient
+Rgb :: style.Rgb
 
 // Starts writing text into `area` of the frame. Finish with `finish`.
 //

@@ -45,3 +45,5 @@ Input_Options :: widgets.Input_Options
 input_text :: widgets.input_text
 input_set :: widgets.input_set
 input_destroy :: widgets.input_destroy
+graph :: widgets.graph
+Graph_Options :: widgets.Graph_Options
