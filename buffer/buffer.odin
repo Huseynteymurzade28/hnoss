@@ -125,9 +125,10 @@ set_symbol :: proc(b: ^Buffer, x, y: int, symbol: string, width: int, s: style.S
 	return c
 }
 
-// Writes `s` starting at (x, y), clipped to the buffer and to `max_width`
-// cells. Zero-width runes (combining marks) join the previous cell.
-// Returns the x just past the last cell written.
+// Writes `s` starting at (x, y), one grapheme per cell (two for wide
+// ones), clipped to the buffer and to `max_width` cells. Control characters
+// are skipped. Returns the x just past the last cell written.
+// For wrapping, alignment and markup use the pen package.
 set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_width := max(int)) -> int {
 	if y < b.area.y || y >= layout.rect_bottom(b.area) {
 		return x
@@ -137,26 +138,17 @@ set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_w
 		right = x + max_width
 	}
 	cx := x
-	prev: ^Cell
-	for i := 0; i < len(s); {
-		r, n := utf8.decode_rune_in_string(s[i:])
-		cluster := s[i:i + n]
-		i += n
-		w := text.rune_width(r)
+	for rest := s; len(rest) > 0; {
+		cluster, w, r := text.next_grapheme(rest)
+		rest = r
 		if w == 0 {
-			if prev != nil && r >= 0x20 && int(prev.len) + n <= MAX_SYMBOL {
-				copy(prev.symbol[prev.len:], cluster)
-				prev.len += u8(n)
-			}
 			continue
 		}
 		if cx + w > right {
 			break
 		}
 		if cx >= b.area.x {
-			prev = set_symbol(b, cx, y, cluster, w, st)
-		} else {
-			prev = nil
+			set_symbol(b, cx, y, cluster, w, st)
 		}
 		cx += w
 	}
