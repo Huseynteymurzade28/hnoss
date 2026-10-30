@@ -506,3 +506,42 @@ widget_button :: proc(t: ^testing.T) {
 	ui = frame(hs, ch('x'))
 	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
 }
+
+@(test)
+widget_modal :: proc(t: ^testing.T) {
+	hs := harness(30, 10)
+	items := []string{"Bakı", "Gəncə", "Şəki"}
+	list: widgets.List_State
+	area := widgets.Rect{10, 3, 12, 4}
+	open := true
+
+	// The frame it opens: the list (drawn before it) still gets its keys.
+	ui := frame(hs)
+	widgets.focus(ui, &list)
+	ui = frame(hs, key(.Down))
+	widgets.list(ui, ui.area, items, &list)
+	inner := widgets.modal(ui, area, &open, "Hi")
+	testing.expect_value(t, list.selected, 1)
+	testing.expect_value(t, inner, widgets.Rect{11, 4, 10, 2})
+
+	// While open, widgets under it see nothing; clicks inside don't close it.
+	ui = frame(hs, key(.Down), click(12, 5))
+	widgets.list(ui, ui.area, items, &list)
+	widgets.modal(ui, area, &open, "Hi")
+	testing.expect_value(t, list.selected, 1)
+	testing.expect(t, open)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 2) // handed back, unused
+
+	ui = frame(hs, click(0, 0))
+	widgets.modal(ui, area, &open, "Hi")
+	testing.expect(t, !open)
+	open = true
+	ui = frame(hs, key(.Esc))
+	widgets.modal(ui, area, &open, "Hi")
+	testing.expect(t, !open)
+
+	// The very next frame after closing, widgets get events again.
+	ui = frame(hs, key(.Down))
+	widgets.list(ui, ui.area, items, &list)
+	testing.expect_value(t, list.selected, 2)
+}

@@ -35,6 +35,7 @@ Theme :: struct {
 	button:             Style,
 	button_focused:     Style,
 	button_pressed:     Style, // held down with the mouse
+	modal:              Style, // the inside of a modal (its border is border_focused)
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
 }
@@ -64,6 +65,7 @@ DEFAULT_THEME :: Theme {
 	button             = {bg = .Bright_Black},
 	button_focused     = {fg = .Black, bg = .Cyan, add = {.Bold}},
 	button_pressed     = {fg = .Black, bg = .White, add = {.Bold}},
+	modal              = {},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
 }

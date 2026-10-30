@@ -39,6 +39,8 @@
 	<a href="#input">input</a>
 	<a href="#checkbox">checkbox · toggle · radio</a>
 	<a href="#button">button</a>
+	<h4>Overlays</h4>
+	<a href="#modal">modal</a>
 </aside>
 
 <main class="doc">
@@ -189,6 +191,22 @@ hnoss.focus_order(ui, {&amp;save, &amp;cancel})
 <span class="k">if</span> hnoss.button(ui, cols[0], <span class="s">"Save"</span>, &amp;save) { write_file() }
 <span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Cancel"</span>, &amp;cancel) { close() }</code></pre>
 <p>Theme: <code>button</code>, <code>button_focused</code>, <code>button_pressed</code>.</p>
+</div>
+
+<h2 id="modal">modal</h2>
+<div class="widget">
+<div class="sig">modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -&gt; (inner: Rect)</div>
+<p>A dialog over everything drawn before it: the frame is dimmed, <code>area</code> is cleared and boxed, and the area inside is returned for the dialog's own widgets. Draw it last.</p>
+<p><code>open</code> is your flag for showing it. While it is true, the widgets under the dialog get no keys or mouse events, so a list behind it doesn't move when you press <kbd>↓</kbd>. <kbd>Esc</kbd> or a click outside sets it to false; so can your own code, e.g. a Cancel button.</p>
+<img src="widgets/modal.svg" alt="modal">
+<pre><code><span class="k">if</span> confirm {
+    d := hnoss.modal(ui, hnoss.center(f.area, 36, 7), &amp;confirm, <span class="s">"[b]Delete city[/]"</span>)
+    hnoss.focus_order(ui, {&amp;cancel, &amp;ok})
+    cols := hnoss.split(hnoss.cut_bottom(&amp;d, 1), .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 2)
+    <span class="k">if</span> hnoss.button(ui, cols[0], <span class="s">"Cancel"</span>, &amp;cancel) { confirm = <span class="k">false</span> }
+    <span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Delete"</span>, &amp;ok)     { remove(); confirm = <span class="k">false</span> }
+}</code></pre>
+<p>Theme: <code>modal</code> for the inside; the border uses <code>border_focused</code>.</p>
 </div>
 </main>
 </div>

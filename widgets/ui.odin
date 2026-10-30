@@ -23,12 +23,14 @@ Ui :: struct {
 	mem:     ^Memory,
 	cursor:  ^Cursor,
 	theme:   Theme,
+	held:    []input.Event, // this frame's events, held back from the widgets under a modal
 }
 
 // State kept across frames, owned by the Terminal.
 Memory :: struct {
 	focus:  rawptr, // state pointer of the widget receiving keys
 	active: rawptr, // widget being dragged with the mouse
+	modal:  ^bool,  // `open` of the modal drawn last frame
 }
 
 // Where to show the terminal's own cursor after this frame (TextInput
@@ -49,6 +51,13 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		cursor  = cursor,
 		theme   = theme,
 	}
+	// While a modal is open, the widgets drawn before it see no events;
+	// `modal` hands them back.
+	if mem.modal != nil && mem.modal^ {
+		ui.held = events
+		ui.events = events[:0]
+	}
+	mem.modal = nil
 	return ui
 }
 

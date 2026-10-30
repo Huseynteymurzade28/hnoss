@@ -51,4 +51,5 @@ toggle :: widgets.toggle
 radio :: widgets.radio
 button :: widgets.button
 Button_State :: widgets.Button_State
+modal :: widgets.modal
 Graph_Options :: widgets.Graph_Options
