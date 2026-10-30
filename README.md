@@ -9,7 +9,8 @@
   <a href="https://huseynteymurzade28.github.io/hnoss/"><b>Documentation</b></a> ·
   <a href="https://huseynteymurzade28.github.io/hnoss/guide.html">Guide</a> ·
   <a href="https://huseynteymurzade28.github.io/hnoss/widgets.html">Widgets</a> ·
-  <a href="examples/">Examples</a>
+  <a href="examples/">Examples</a><br><br>
+  <a href="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml"><img src="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
 ![hnoss monitor](docs/monitor-odlar-yurdu.svg)
