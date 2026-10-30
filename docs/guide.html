@@ -48,7 +48,9 @@
 
 <h2 id="install">Install</h2>
 <p>hnoss is a plain Odin package with no dependencies beyond <code>core:</code> and <code>base:</code>. Put the repository next to your code (a git submodule works well) and import it:</p>
-<pre><code>git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
+<pre><code>git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss   <span class="c"># inside a git repo (git init first)</span>
+<span class="c"># or, without git in your project:</span>
+git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <pre><code><span class="k">package</span> main
 
 <span class="k">import</span> hnoss <span class="s">"libs/hnoss"</span></code></pre>

@@ -28,7 +28,9 @@
 hnoss is a plain Odin package; there is no package manager, so add the repository to your project:
 
 ```sh
-git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss
+git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss   # inside a git repo (git init first)
+# or, without git in your project:
+git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss
 ```
 
 Then import it by path, relative to the file that imports it (`import hnoss "libs/hnoss"`), or register a collection once and import it from anywhere in your project:
