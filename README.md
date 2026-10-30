@@ -23,10 +23,26 @@
 | ![showcase](docs/gallery/showcase.svg)<br>**Widgets**<br><sub>tabs, lists, braille graph, table, gauges, input</sub> | ![plasma](docs/gallery/plasma.svg)<br>**Truecolor at 60 fps**<br><sub>double-buffered diff, one write per frame</sub> | ![text](docs/gallery/text.svg)<br>**Text & markup**<br><sub>wrapping by grapheme, `[b red]markup[/]`</sub> |
 | ![layout](docs/gallery/layout.svg)<br>**Layout**<br><sub>cuts, split, grid, center</sub> | ![list](docs/gallery/list.svg)<br>**Stateful widgets**<br><sub>keyboard, mouse, focus</sub> | ![events](docs/gallery/events.svg)<br>**Input**<br><sub>keys, modifiers, mouse, paste</sub> |
 
+## Install
+
+hnoss is a plain Odin package; there is no package manager, so add the repository to your project:
+
+```sh
+git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss
+```
+
+Then import it by path, relative to the file that imports it (`import hnoss "libs/hnoss"`), or register a collection once and import it from anywhere in your project:
+
+```sh
+odin run . -collection:libs=libs      # import hnoss "libs:hnoss"
+```
+
 ## Quick start
 
 ```odin
-import hnoss "hnoss"
+package main
+
+import hnoss "libs/hnoss"
 
 main :: proc() {
     term, _ := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})

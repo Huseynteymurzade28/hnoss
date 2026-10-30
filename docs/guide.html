@@ -49,7 +49,13 @@
 <h2 id="install">Install</h2>
 <p>hnoss is a plain Odin package with no dependencies beyond <code>core:</code> and <code>base:</code>. Put the repository next to your code (a git submodule works well) and import it:</p>
 <pre><code>git submodule add https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
-<pre><code><span class="k">import</span> hnoss <span class="s">"libs/hnoss"</span></code></pre>
+<pre><code><span class="k">package</span> main
+
+<span class="k">import</span> hnoss <span class="s">"libs/hnoss"</span></code></pre>
+<p>A path import is resolved relative to the file that contains it, so <code>"libs/hnoss"</code> works from the project root. To import it the same way from any directory, register a collection when you build:</p>
+<pre><code>odin run . -collection:libs=libs</code></pre>
+<pre><code><span class="k">import</span> hnoss <span class="s">"libs:hnoss"</span></code></pre>
+<p>To stay on a released version, check out a tag inside the submodule (<code>git -C libs/hnoss checkout v0.1.0</code>) and commit the submodule.</p>
 <p>Linux is supported today. The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
 
 <h2 id="loop">The frame loop</h2>
