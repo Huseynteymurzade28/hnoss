@@ -475,3 +475,34 @@ widget_radio :: proc(t: ^testing.T) {
 	widgets.radio(ui, ui.area, options, &sel)
 	testing.expect_value(t, sel, 2)
 }
+
+@(test)
+widget_button :: proc(t: ^testing.T) {
+	hs := harness(12, 3)
+	ok: widgets.Button_State
+	ui := frame(hs)
+	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
+	expect_rows(t, screen_rows(&hs.buf), "", "     OK", "")
+
+	// Presses on release over the button, not on the press.
+	ui = frame(hs, click(5, 1))
+	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
+	testing.expect(t, widgets.focused(ui, &ok))
+	testing.expect_value(t, hs.buf.cells[1 * 12].bg, ui.theme.button_pressed.bg)
+	ui = frame(hs, click(6, 1, .Release))
+	testing.expect(t, widgets.button(ui, ui.area, "OK", &ok))
+	testing.expect(t, ok.pressed)
+
+	// Dragging off before releasing cancels.
+	ui = frame(hs, click(5, 1), click(30, 1, .Drag), click(30, 1, .Release))
+	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+
+	// Keys while focused.
+	ui = frame(hs, key(.Enter))
+	testing.expect(t, widgets.button(ui, ui.area, "OK", &ok))
+	ui = frame(hs, ch(' '))
+	testing.expect(t, widgets.button(ui, ui.area, "OK", &ok))
+	ui = frame(hs, ch('x'))
+	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
+}

@@ -49,4 +49,6 @@ graph :: widgets.graph
 checkbox :: widgets.checkbox
 toggle :: widgets.toggle
 radio :: widgets.radio
+button :: widgets.button
+Button_State :: widgets.Button_State
 Graph_Options :: widgets.Graph_Options

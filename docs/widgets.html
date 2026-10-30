@@ -38,6 +38,7 @@
 	<h4>Editing</h4>
 	<a href="#input">input</a>
 	<a href="#checkbox">checkbox · toggle · radio</a>
+	<a href="#button">button</a>
 </aside>
 
 <main class="doc">
@@ -175,6 +176,19 @@ hnoss.checkbox(ui, hnoss.cut_top(&amp;area, 1), <span class="s">"Wi-Fi"</span>, 
 <span class="k">if</span> hnoss.radio(ui, area, {<span class="s">"Bakı"</span>, <span class="s">"Gəncə"</span>, <span class="s">"Şəki"</span>}, &amp;city) {
     reload(city)
 }</code></pre>
+</div>
+
+<h2 id="button">button</h2>
+<div class="widget">
+<div class="sig">button :: proc(ui: ^Ui, area: Rect, label: string, state: ^Button_State) -&gt; (pressed: bool)</div>
+<p>Fills <code>area</code> and centers the markup label in it. Returns true on the frame it is pressed (also in <code>state.pressed</code>). A mouse press fires on release, only if the pointer is still over the button, so dragging away cancels; while held it uses <code>theme.button_pressed</code>.</p>
+<img src="widgets/button.svg" alt="button">
+<p class="keys">Keys (focused): <kbd>Enter</kbd> <kbd>Space</kbd> · click.</p>
+<pre><code>save, cancel: hnoss.Button_State
+hnoss.focus_order(ui, {&amp;save, &amp;cancel})
+<span class="k">if</span> hnoss.button(ui, cols[0], <span class="s">"Save"</span>, &amp;save) { write_file() }
+<span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Cancel"</span>, &amp;cancel) { close() }</code></pre>
+<p>Theme: <code>button</code>, <code>button_focused</code>, <code>button_pressed</code>.</p>
 </div>
 </main>
 </div>

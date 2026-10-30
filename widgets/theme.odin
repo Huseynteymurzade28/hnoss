@@ -32,6 +32,9 @@ Theme :: struct {
 
 	input:              Style,
 	check:              Style, // the mark of a checked box, an on toggle, the chosen radio
+	button:             Style,
+	button_focused:     Style,
+	button_pressed:     Style, // held down with the mouse
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
 }
@@ -58,6 +61,9 @@ DEFAULT_THEME :: Theme {
 
 	input              = {},
 	check              = {fg = .Cyan, add = {.Bold}},
+	button             = {bg = .Bright_Black},
+	button_focused     = {fg = .Black, bg = .Cyan, add = {.Bold}},
+	button_pressed     = {fg = .Black, bg = .White, add = {.Bold}},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
 }
