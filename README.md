@@ -13,6 +13,10 @@
   <a href="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml"><img src="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
+![hnoss demo](docs/demo.gif)
+
+<p align="center"><sub><code>examples/demo</code>: plasma, a shaded 3D torus on a braille canvas, live graphs and scripted input, at 60 fps in ~2 ms a frame.</sub></p>
+
 ![hnoss monitor](docs/monitor-odlar-yurdu.svg)
 
 <p align="center"><sub><code>examples/monitor</code>: a live system monitor reading <code>/proc</code>, in the <b>Odlar Yurdu</b> theme.</sub></p>
@@ -83,7 +87,7 @@ main :: proc() {
 
 ```sh
 ./build.sh                 # check + tests + all examples into bin/
-./build.sh run showcase    # or: monitor, plasma, text, layout, event_inspector, w_<widget>
+./build.sh run demo        # or: showcase, monitor, plasma, text, layout, event_inspector, w_<widget>
 ```
 
 Linux today; the platform layer is one small file so macOS/Windows can follow.
