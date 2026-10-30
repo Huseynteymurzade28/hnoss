@@ -1,7 +1,7 @@
 // A self-running demo that pushes hnoss hard on one screen: a gradient logo,
 // a truecolor plasma, a shaded 3D torus on a braille canvas, live graphs,
 // a table, gauges, and focus moving between widgets that are driven by
-// scripted key presses. It plays a 16-second script on a loop.
+// scripted key presses. It plays an 18-second script on a loop.
 //   q / Ctrl+C  quit
 package main
 
@@ -28,7 +28,7 @@ DIM :: hnoss.Rgb{0x6d, 0x86, 0x8c}
 @(rodata) HEAT := [?]hnoss.Rgb{TEAL, TEAL_LIGHT, GOLD, RED_LIGHT, RED}
 @(rodata) DEPTH := [?]hnoss.Rgb{{0x1c, 0x3a, 0x44}, TEAL, TEAL_LIGHT, GOLD, {0xff, 0xf4, 0xd8}}
 
-SCRIPT_SECONDS :: 16.0
+SCRIPT_SECONDS :: 18.0
 SAMPLE_RATE :: 30.0 // graph samples per second, independent of the frame rate
 FRAME_TIME :: time.Second / 60
 
@@ -76,10 +76,11 @@ Step :: struct {
 	{at = 8.8, focus = 3},
 }
 
-TYPED :: "deploy api --region=bakı --canary 10% "
+// Typed like a person: uneven gaps, a pause between words and one typo
+// fixed with Backspace ('\b').
+TYPED :: "deploy api --regoin\b\b\bion=bakı --canary 10% "
 PASTED :: "→ 世界 · Bakı ✓"
 TYPE_FROM :: 9.2
-TYPE_EVERY :: 0.07
 
 State :: struct {
 	tab:      int,
@@ -167,13 +168,31 @@ scripted_events :: proc(events: ^[dynamic]hnoss.Event, prev, t: f64) -> (focus: 
 		if s.at <= t { focus = s.focus }
 		if s.at > prev && s.at <= t && s.ev != nil { append(events, s.ev) }
 	}
-	i := 0
+	at := TYPE_FROM
+	last: rune
+	seed := u32(7)
 	for r in TYPED {
-		at := TYPE_FROM + f64(i) * TYPE_EVERY
-		if at > prev && at <= t { append(events, hnoss.Key{code = .Char, char = r}) }
-		i += 1
+		seed = seed * 1103515245 + 12345 // the same "random" rhythm every loop
+		jitter := f64((seed >> 16) % 1000) / 1000
+		gap := 0.07 + 0.09 * jitter
+		switch {
+		case r == '\b' && last != '\b': gap = 0.45 // notices the typo
+		case r == '\b':                  gap = 0.09
+		case last == '\b':               gap = 0.3
+		case last == ' ':                 gap += 0.18 // between words
+		case r == '-' || r == '=':        gap += 0.08
+		}
+		at += gap
+		last = r
+		if at > prev && at <= t {
+			if r == '\b' {
+				append(events, hnoss.Key{code = .Backspace})
+			} else {
+				append(events, hnoss.Key{code = .Char, char = r})
+			}
+		}
 	}
-	paste_at := TYPE_FROM + f64(i) * TYPE_EVERY + 0.3
+	paste_at := at + 0.6
 	if paste_at > prev && paste_at <= t { append(events, hnoss.Paste{text = PASTED}) }
 	return
 }

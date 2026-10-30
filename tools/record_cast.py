@@ -3,9 +3,9 @@
 asciicast v2 recording, which agg turns into a GIF. docs/demo.gif is made with:
 
     ./build.sh examples
-    python3 tools/record_cast.py bin/demo demo.cast 132 38 16.2
+    python3 tools/record_cast.py bin/demo demo.cast 132 38 18.1
     agg --font-family "JetBrainsMono Nerd Font Mono,DejaVu Sans Mono,Noto Sans CJK JP" \
-        --font-size 12 --line-height 1.2 --fps-cap 20 --idle-time-limit 1 demo.cast docs/demo.gif
+        --font-size 12 --line-height 1.2 --fps-cap 20 --idle-time-limit 1 --last-frame-duration 0 demo.cast docs/demo.gif
 """
 import codecs, fcntl, json, os, pty, select, struct, sys, termios, time
 prog, out, cols, rows, secs = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5])
