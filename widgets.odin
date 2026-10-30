@@ -28,6 +28,10 @@ paragraph :: widgets.paragraph
 Paragraph_Options :: widgets.Paragraph_Options
 Scroll_State :: widgets.Scroll_State
 scrollbar :: widgets.scrollbar
+hscrollbar :: widgets.hscrollbar
+scroll_view :: widgets.scroll_view
+scroll_view_end :: widgets.scroll_view_end
+View_State :: widgets.View_State
 
 list :: widgets.list
 List_State :: widgets.List_State

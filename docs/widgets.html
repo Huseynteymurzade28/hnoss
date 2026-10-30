@@ -26,6 +26,7 @@
 	<a href="#box">box</a>
 	<a href="#label">label</a>
 	<a href="#paragraph">paragraph</a>
+	<a href="#scroll_view">scroll_view</a>
 	<h4>Selection</h4>
 	<a href="#list">list</a>
 	<a href="#table">table</a>
@@ -75,6 +76,21 @@
 <p class="keys">Keys (focused): <kbd>↑</kbd> <kbd>↓</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd> · mouse wheel when hovered. Options: <code>wrap</code>, <code>align</code>, <code>scrollbar</code>.</p>
 </div>
 
+<h2 id="scroll_view">scroll_view</h2>
+<div class="widget">
+<div class="sig">scroll_view :: proc(ui: ^Ui, area: Rect, state: ^View_State, width, height: int) -&gt; (content: Rect)
+scroll_view_end :: proc(ui: ^Ui, state: ^View_State)</div>
+<p>A viewport onto content bigger than <code>area</code>: <code>width</code> × <code>height</code> cells, where <code>0</code> means as wide or as tall as the viewport. It returns where the content sits on screen, already shifted by the scroll offset; draw any widgets into it, then call <code>scroll_view_end</code>. Drawing is clipped to the viewport, and mouse events outside it don't reach the widgets inside, so a button scrolled out of sight can't be clicked.</p>
+<p>Scrollbars appear on the right and bottom edges when the content overflows. <code>state.x</code> and <code>state.y</code> are the scroll offset; set them yourself to jump. Scroll views nest.</p>
+<img src="widgets/scroll_view.svg" alt="scroll_view">
+<p class="keys">Keys (focused): <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd> · the wheel anywhere over it (<kbd>Shift</kbd>+wheel sideways) · a click on it focuses it unless a widget inside takes the click. Widgets inside that scroll themselves (a list) scroll with their keys, since the view takes the wheel.</p>
+<pre><code>content := hnoss.scroll_view(ui, inner, &amp;view, 0, len(regions))
+<span class="k">for</span> name, i <span class="k">in</span> regions {
+    hnoss.checkbox(ui, {content.x, content.y + i, content.width, 1}, name, &amp;picked[i])
+}
+hnoss.scroll_view_end(ui, &amp;view)</code></pre>
+</div>
+
 <h2 id="list">list</h2>
 <div class="widget">
 <div class="sig">list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := List_Options{}) -&gt; (changed: bool)</div>
@@ -112,7 +128,7 @@ hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true
 <h2 id="scrollbar">scrollbar</h2>
 <div class="widget">
 <div class="sig">scrollbar :: proc(ui: ^Ui, area: Rect, total, visible: int, offset: ^int) -&gt; (changed: bool)</div>
-<p>A vertical bar for <code>total</code> lines of which <code>visible</code> fit. Click the track to jump, drag the thumb (dragging keeps working outside the bar), or use the wheel. <code>paragraph</code>, <code>list</code> and <code>table</code> can draw one for you.</p>
+<p>A vertical bar for <code>total</code> lines of which <code>visible</code> fit. Click the track to jump, drag the thumb (dragging keeps working outside the bar), or use the wheel. <code>paragraph</code>, <code>list</code> and <code>table</code> can draw one for you. <code>hscrollbar</code>, with the same parameters, is the horizontal one along the bottom row of <code>area</code>.</p>
 <img src="widgets/scrollbar.svg" alt="scrollbar">
 </div>
 

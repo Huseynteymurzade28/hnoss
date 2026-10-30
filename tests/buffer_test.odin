@@ -199,3 +199,28 @@ fill_blanks_and_styles_area :: proc(t: ^testing.T) {
 	testing.expect_value(t, buffer.cell_symbol(buffer.get(&b, 1, 1)), " ")
 	testing.expect_value(t, buffer.get(&b, 1, 1).width, 1)
 }
+
+@(test)
+clip_limits_drawing :: proc(t: ^testing.T) {
+	b: buffer.Buffer
+	buffer.init(&b, {0, 0, 6, 3}, context.temp_allocator)
+	old := buffer.set_clip(&b, {1, 1, 3, 5})
+	testing.expect_value(t, old, buffer.Rect{0, 0, 6, 3})
+	testing.expect_value(t, b.clip, buffer.Rect{1, 1, 3, 2}) // kept inside the area
+
+	buffer.set_string(&b, 0, 0, "aaaaaa")
+	buffer.set_string(&b, 0, 1, "bbbbbb")
+	buffer.fill(&b, {0, 2, 6, 1}, {bg = .Red})
+	buffer.set_string(&b, 0, 2, "世界!")
+	rows := screen_rows(&b)
+	testing.expect_value(t, rows[0], "")
+	testing.expect_value(t, rows[1], " bbb")
+	testing.expect_value(t, rows[2], "  界")
+	testing.expect_value(t, buffer.get(&b, 0, 2).bg, nil)
+	testing.expect_value(t, buffer.get(&b, 1, 2).bg, style.Color(style.Named_Color.Red))
+	// A wide char whose right half would fall outside isn't drawn.
+	testing.expect(t, buffer.set_symbol(&b, 3, 1, "界", 2, {}) == nil)
+
+	buffer.reset(&b)
+	testing.expect_value(t, b.clip, b.area)
+}

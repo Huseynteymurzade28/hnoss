@@ -47,8 +47,12 @@ cell_set_style :: proc(c: ^Cell, s: style.Style) {
 
 // A grid of cells covering `area`. Row-major; cell (x, y) is at
 // `(y - area.y) * area.width + (x - area.x)`.
+//
+// Drawing (set_symbol, set_string, set_style, fill) only touches cells
+// inside `clip`, which is the whole area unless set_clip narrowed it.
 Buffer :: struct {
 	area:      Rect,
+	clip:      Rect,
 	cells:     []Cell,
 	allocator: mem.Allocator,
 }
@@ -76,7 +80,17 @@ resize :: proc(b: ^Buffer, area: Rect) -> mem.Allocator_Error {
 	return nil
 }
 
+// Limits drawing to `r` (within the area). Returns the clip it replaces,
+// to put back with another set_clip when done.
+set_clip :: proc(b: ^Buffer, r: Rect) -> (old: Rect) {
+	old = b.clip
+	b.clip = layout.rect_intersection(r, b.area)
+	return
+}
+
+// Blanks every cell and lifts any clip.
 reset :: proc(b: ^Buffer) {
+	b.clip = b.area
 	for &c in b.cells {
 		c = EMPTY_CELL
 	}
@@ -86,7 +100,7 @@ index_of :: proc(b: ^Buffer, x, y: int) -> int {
 	return (y - b.area.y) * b.area.width + (x - b.area.x)
 }
 
-// nil when (x, y) is outside the buffer.
+// nil when (x, y) is outside the buffer. Reading ignores the clip.
 get :: proc(b: ^Buffer, x, y: int) -> ^Cell {
 	if !layout.rect_contains(b.area, x, y) {
 		return nil
@@ -96,13 +110,13 @@ get :: proc(b: ^Buffer, x, y: int) -> ^Cell {
 
 // Puts one grapheme at (x, y), keeping wide characters consistent: a wide
 // symbol blanks the cell it covers, and writing over either half of an
-// existing wide symbol blanks the other half. Returns the cell written, or
-// nil if it does not fit.
+// existing wide symbol blanks the other half (even outside the clip).
+// Returns the cell written, or nil if it does not fit in the clip.
 set_symbol :: proc(b: ^Buffer, x, y: int, symbol: string, width: int, s: style.Style) -> ^Cell {
-	c := get(b, x, y)
-	if c == nil || (width == 2 && !layout.rect_contains(b.area, x + 1, y)) {
+	if !layout.rect_contains(b.clip, x, y) || (width == 2 && !layout.rect_contains(b.clip, x + 1, y)) {
 		return nil
 	}
+	c := get(b, x, y)
 	// Overwriting the right half of a wide char: the left half is now a lie.
 	if left := get(b, x - 1, y); left != nil && left.width == 2 {
 		cell_set_symbol(left, " ", 1)
@@ -127,14 +141,14 @@ set_symbol :: proc(b: ^Buffer, x, y: int, symbol: string, width: int, s: style.S
 }
 
 // Writes `s` starting at (x, y), one grapheme per cell (two for wide
-// ones), clipped to the buffer and to `max_width` cells. Control characters
+// ones), clipped to the clip and to `max_width` cells. Control characters
 // are skipped. Returns the x just past the last cell written.
 // For wrapping, alignment and markup use the pen package.
 set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_width := max(int)) -> int {
-	if y < b.area.y || y >= layout.rect_bottom(b.area) {
+	if y < b.clip.y || y >= layout.rect_bottom(b.clip) {
 		return x
 	}
-	right := layout.rect_right(b.area)
+	right := layout.rect_right(b.clip)
 	if max_width < right - x {
 		right = x + max_width
 	}
@@ -148,7 +162,7 @@ set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_w
 		if cx + w > right {
 			break
 		}
-		if cx >= b.area.x {
+		if cx >= b.clip.x {
 			set_symbol(b, cx, y, cluster, w, st)
 		}
 		cx += w
@@ -156,9 +170,9 @@ set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_w
 	return cx
 }
 
-// Applies `s` to every cell in `area` (clipped to the buffer).
+// Applies `s` to every cell in `area` (clipped).
 set_style :: proc(b: ^Buffer, area: Rect, s: style.Style) {
-	r := layout.rect_intersection(area, b.area)
+	r := layout.rect_intersection(area, b.clip)
 	for y in r.y ..< r.y + r.height {
 		for x in r.x ..< r.x + r.width {
 			cell_set_style(&b.cells[index_of(b, x, y)], s)
@@ -166,13 +180,13 @@ set_style :: proc(b: ^Buffer, area: Rect, s: style.Style) {
 	}
 }
 
-// Blanks every cell in `area` (clipped to the buffer) and applies `s`:
+// Blanks every cell in `area` (clipped) and applies `s`:
 // a solid background. A wide char whose right half falls inside the area
 // loses its left half too (via set_symbol on the first column); one whose
 // left half is the last column simply becomes a blank, as its right half
 // already is.
 fill :: proc(b: ^Buffer, area: Rect, s: style.Style) {
-	r := layout.rect_intersection(area, b.area)
+	r := layout.rect_intersection(area, b.clip)
 	for y in r.y ..< r.y + r.height {
 		set_symbol(b, r.x, y, " ", 1, s)
 		for x in r.x + 1 ..< r.x + r.width {

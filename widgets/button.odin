@@ -29,7 +29,7 @@ button :: proc(ui: ^Ui, area: Rect, label: string, state: ^Button_State) -> (pre
 
 	mit: Key_Iter
 	for m, i in next_mouse(ui, state, area, &mit) {
-		inside := layout.rect_contains(area, m.x, m.y)
+		inside := layout.rect_contains(layout.rect_intersection(area, ui.buf.clip), m.x, m.y)
 		#partial switch m.kind {
 		case .Press:
 			if m.button != .Left || !inside { continue }

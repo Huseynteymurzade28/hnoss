@@ -545,3 +545,66 @@ widget_modal :: proc(t: ^testing.T) {
 	widgets.list(ui, ui.area, items, &list)
 	testing.expect_value(t, list.selected, 2)
 }
+
+@(private = "file")
+scroll_lines :: proc(ui: ^widgets.Ui, view: ^widgets.View_State, list: ^widgets.List_State) {
+	c := widgets.scroll_view(ui, {0, 0, 8, 4}, view, 0, 10)
+	widgets.label(ui, c, "0\n1\n2\n3\n4\n5\n6\n7\n8\n9")
+	widgets.list(ui, {c.x + 2, c.y + 5, 5, 2}, {"a", "b"}, list)
+	widgets.scroll_view_end(ui, view)
+}
+
+@(test)
+widget_scroll_view :: proc(t: ^testing.T) {
+	hs := harness(8, 8)
+	view: widgets.View_State
+	list: widgets.List_State
+
+	// 10 lines in a 4-line viewport; the list (content rows 5-6) is below it,
+	// so it is clipped and a click where it would be doesn't reach it.
+	ui := frame(hs, click(3, 6))
+	scroll_lines(ui, &view, &list)
+	expect_rows(t, screen_rows(&hs.buf), "0      ┃", "1      │", "2      │", "3      │")
+	testing.expect_value(t, hs.buf.clip, hs.buf.area)
+	testing.expect(t, !widgets.focused(ui, &list))
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+
+	ui = frame(hs, wheel(1, 1, true))
+	scroll_lines(ui, &view, &list)
+	testing.expect_value(t, view.y, 3)
+	expect_rows(t, screen_rows(&hs.buf), "3      │", "4      │", "5 › a  ┃", "6   b  │")
+
+	// Now on screen, the list takes the click and the focus.
+	ui = frame(hs, click(3, 3))
+	scroll_lines(ui, &view, &list)
+	testing.expect_value(t, list.selected, 1)
+	testing.expect(t, widgets.focused(ui, &list))
+
+	// A click on the view's own content focuses it; then keys scroll it.
+	ui = frame(hs, click(0, 0))
+	scroll_lines(ui, &view, &list)
+	testing.expect(t, widgets.focused(ui, &view))
+	ui = frame(hs, key(.End))
+	scroll_lines(ui, &view, &list)
+	expect_rows(t, screen_rows(&hs.buf), "6 › b  │", "7      │", "8      │", "9      ┃")
+}
+
+@(test)
+widget_scroll_view_sideways :: proc(t: ^testing.T) {
+	hs := harness(4, 3)
+	view: widgets.View_State
+	draw :: proc(ui: ^widgets.Ui, view: ^widgets.View_State) {
+		c := widgets.scroll_view(ui, ui.area, view, 10, 0)
+		widgets.label(ui, c, "abcdefghij", wrap = .Clip)
+		widgets.scroll_view_end(ui, view)
+	}
+	widgets.focus(frame(hs), &view)
+	ui := frame(hs, key(.Right))
+	draw(ui, &view)
+	expect_rows(t, screen_rows(&hs.buf), "bcde", "", "─━──")
+
+	ui = frame(hs, input.Mouse{kind = .Scroll, button = .Wheel_Down, x = 0, y = 0, mods = {.Shift}})
+	draw(ui, &view)
+	testing.expect_value(t, view.x, 4)
+	expect_rows(t, screen_rows(&hs.buf), "efgh", "", "──━─")
+}

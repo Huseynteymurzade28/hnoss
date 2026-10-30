@@ -136,8 +136,8 @@ next_key :: proc(ui: ^Ui, id: rawptr, it: ^Key_Iter) -> (k: input.Key, index: in
 	return
 }
 
-// Like next_key for mouse events inside `area` (or anywhere, while `id`
-// is the widget being dragged). Focus is not required.
+// Like next_key for mouse events inside `area` and the buffer's clip (or
+// anywhere, while `id` is the widget being dragged). Focus is not required.
 next_mouse :: proc(ui: ^Ui, id: rawptr, area: Rect, it: ^Key_Iter) -> (m: input.Mouse, index: int, ok: bool) {
 	for it.i < len(ui.events) {
 		i := it.i
@@ -145,7 +145,8 @@ next_mouse :: proc(ui: ^Ui, id: rawptr, area: Rect, it: ^Key_Iter) -> (m: input.
 		if ui.handled[i] { continue }
 		if mouse, is_mouse := ui.events[i].(input.Mouse); is_mouse {
 			dragging := id != nil && ui.mem.active == id
-			if dragging || layout.rect_contains(area, mouse.x, mouse.y) {
+			inside := layout.rect_contains(area, mouse.x, mouse.y) && layout.rect_contains(ui.buf.clip, mouse.x, mouse.y)
+			if dragging || inside {
 				return mouse, i, true
 			}
 		}

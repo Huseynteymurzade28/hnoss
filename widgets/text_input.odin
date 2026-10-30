@@ -4,6 +4,7 @@ import "core:strings"
 import "core:unicode/utf8"
 import "../buffer"
 import "../input"
+import "../layout"
 import "../text"
 
 // State of a single-line text field. `text` grows with the allocator it
@@ -91,8 +92,8 @@ input :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Input_Options{})
 		}
 	}
 
-	if focused(ui, state) {
-		ui.cursor^ = {area.x + caret - state.scroll, area.y, true}
+	if x := area.x + caret - state.scroll; focused(ui, state) && layout.rect_contains(ui.buf.clip, x, area.y) {
+		ui.cursor^ = {x, area.y, true}
 	}
 	return changed
 }
