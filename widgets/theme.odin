@@ -31,6 +31,7 @@ Theme :: struct {
 	tab_selected:       Style,
 
 	input:              Style,
+	check:              Style, // the mark of a checked box, an on toggle, the chosen radio
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
 }
@@ -56,6 +57,7 @@ DEFAULT_THEME :: Theme {
 	tab_selected       = {fg = .Cyan, add = {.Bold, .Underlined}},
 
 	input              = {},
+	check              = {fg = .Cyan, add = {.Bold}},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
 }

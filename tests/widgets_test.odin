@@ -415,3 +415,63 @@ style_gradient_stops :: proc(t: ^testing.T) {
 	testing.expect_value(t, style.gradient(stops, 7), style.Color(style.Rgb{200, 200, 200}))
 	testing.expect_value(t, style.hex(0xff8800), style.Rgb{255, 136, 0})
 }
+
+@(test)
+widget_checkbox :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	on := false
+	ui := frame(hs)
+	testing.expect(t, !widgets.checkbox(ui, ui.area, "Wi-Fi", &on))
+	expect_rows(t, screen_rows(&hs.buf), "[ ] Wi-Fi")
+
+	// Keys do nothing until it has focus; a click toggles and focuses.
+	ui = frame(hs, ch(' '))
+	testing.expect(t, !widgets.checkbox(ui, ui.area, "Wi-Fi", &on))
+	ui = frame(hs, click(2, 0))
+	testing.expect(t, widgets.checkbox(ui, ui.area, "Wi-Fi", &on))
+	testing.expect(t, on)
+	testing.expect(t, widgets.focused(ui, &on))
+	expect_rows(t, screen_rows(&hs.buf), "[✓] Wi-Fi")
+
+	ui = frame(hs, ch(' '), key(.Enter), key(.Enter))
+	testing.expect(t, widgets.checkbox(ui, ui.area, "Wi-Fi", &on))
+	testing.expect(t, !on) // three toggles
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+}
+
+@(test)
+widget_toggle :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	on := true
+	ui := frame(hs)
+	widgets.toggle(ui, ui.area, "Dark mode", &on)
+	expect_rows(t, screen_rows(&hs.buf), "━━● Dark mode")
+	ui = frame(hs, click(0, 0))
+	testing.expect(t, widgets.toggle(ui, ui.area, "Dark mode", &on))
+	expect_rows(t, screen_rows(&hs.buf), "●━━ Dark mode")
+}
+
+@(test)
+widget_radio :: proc(t: ^testing.T) {
+	hs := harness(20, 4)
+	options := []string{"Bakı", "Gəncə", "Şəki"}
+	sel := 0
+	ui := frame(hs)
+	widgets.radio(ui, ui.area, options, &sel)
+	expect_rows(t, screen_rows(&hs.buf), "◉ Bakı", "○ Gəncə", "○ Şəki", "")
+
+	ui = frame(hs, click(3, 2))
+	testing.expect(t, widgets.radio(ui, ui.area, options, &sel))
+	testing.expect_value(t, sel, 2)
+	testing.expect(t, widgets.focused(ui, &sel))
+
+	ui = frame(hs, click(3, 3)) // below the options: focuses, keeps the choice
+	testing.expect(t, !widgets.radio(ui, ui.area, options, &sel))
+
+	ui = frame(hs, key(.Down), key(.Up), key(.Up), ch('k'), ch('k'))
+	widgets.radio(ui, ui.area, options, &sel)
+	testing.expect_value(t, sel, 0) // clamped
+	ui = frame(hs, key(.End))
+	widgets.radio(ui, ui.area, options, &sel)
+	testing.expect_value(t, sel, 2)
+}

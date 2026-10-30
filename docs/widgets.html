@@ -37,6 +37,7 @@
 	<a href="#graph">graph</a>
 	<h4>Editing</h4>
 	<a href="#input">input</a>
+	<a href="#checkbox">checkbox · toggle · radio</a>
 </aside>
 
 <main class="doc">
@@ -157,6 +158,23 @@ hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true
     filter(hnoss.input_text(&amp;search))
 }</code></pre>
 <p>Options: <code>placeholder</code>, <code>mask</code> (e.g. <code>"•"</code> for passwords). Helpers: <code>input_text</code>, <code>input_set</code>, <code>input_destroy</code>.</p>
+</div>
+
+<h2 id="checkbox">checkbox · toggle · radio</h2>
+<div class="widget">
+<div class="sig">checkbox :: proc(ui: ^Ui, area: Rect, label: string, checked: ^bool) -&gt; (changed: bool)
+toggle :: proc(ui: ^Ui, area: Rect, label: string, on: ^bool) -&gt; (changed: bool)
+radio :: proc(ui: ^Ui, area: Rect, options: []string, selected: ^int) -&gt; (changed: bool)</div>
+<p>The <code>^bool</code> or <code>^int</code> you pass is the state and the widget's identity for focus. Labels are markup. A focused choice is drawn like a selected list row; the mark uses <code>theme.check</code>.</p>
+<img src="widgets/checkbox.svg" alt="checkbox, toggle and radio">
+<p class="keys">Keys (focused): checkbox and toggle <kbd>Space</kbd> <kbd>Enter</kbd> · radio <kbd>↑</kbd><kbd>↓</kbd> or <kbd>k</kbd><kbd>j</kbd>, <kbd>Home</kbd> <kbd>End</kbd> · click to toggle or choose.</p>
+<pre><code>wifi := <span class="k">true</span>
+city := 0
+hnoss.focus_order(ui, {&amp;wifi, &amp;city})
+hnoss.checkbox(ui, hnoss.cut_top(&amp;area, 1), <span class="s">"Wi-Fi"</span>, &amp;wifi)
+<span class="k">if</span> hnoss.radio(ui, area, {<span class="s">"Bakı"</span>, <span class="s">"Gəncə"</span>, <span class="s">"Şəki"</span>}, &amp;city) {
+    reload(city)
+}</code></pre>
 </div>
 </main>
 </div>
