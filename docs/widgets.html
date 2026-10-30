@@ -38,6 +38,7 @@
 	<a href="#graph">graph</a>
 	<h4>Editing</h4>
 	<a href="#input">input</a>
+	<a href="#text_area">text_area</a>
 	<a href="#checkbox">checkbox · toggle · radio</a>
 	<a href="#button">button</a>
 	<h4>Overlays</h4>
@@ -177,6 +178,26 @@ hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true
     filter(hnoss.input_text(&amp;search))
 }</code></pre>
 <p>Options: <code>placeholder</code>, <code>mask</code> (e.g. <code>"•"</code> for passwords). Helpers: <code>input_text</code>, <code>input_set</code>, <code>input_destroy</code>.</p>
+</div>
+
+<h2 id="text_area">text_area</h2>
+<div class="widget">
+<div class="sig">text_area :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Text_Area_Options{}) -&gt; (changed: bool)</div>
+<p>A multi-line text field, word-wrapped to the width of <code>area</code>. It edits the same <code>Input_State</code> as <code>input</code>, so <code>input_text</code>, <code>input_set</code> and <code>input_destroy</code> work on it and every key of the single-line field does too; <code>state.scroll</code> is the first visible row. It scrolls to keep the caret visible and shows the terminal cursor there.</p>
+<img src="widgets/text_area.svg" alt="text_area">
+<table class="ref">
+<tr><th>Keys (besides <a href="#input">input</a>'s)</th><th></th></tr>
+<tr><td><kbd>Enter</kbd></td><td>new line</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd></td><td>move by wrapped row, keeping the column</td></tr>
+<tr><td><kbd>Home</kbd> <kbd>End</kbd> <kbd>Ctrl</kbd>+<kbd>A</kbd>/<kbd>E</kbd></td><td>start / end of the line</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd></td><td>start / end of the text</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>U</kbd> / <kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>delete to the line's start / end; at the end, <kbd>Ctrl</kbd>+<kbd>K</kbd> joins the next line</td></tr>
+<tr><td>paste</td><td>keeps its newlines; tabs become four spaces</td></tr>
+</table>
+<pre><code>note: hnoss.Input_State
+<span class="k">defer</span> hnoss.input_destroy(&amp;note)
+hnoss.text_area(ui, inner, &amp;note, {placeholder = <span class="s">"Write something…"</span>, scrollbar = <span class="k">true</span>})</code></pre>
+<p>Options: <code>placeholder</code>, <code>scrollbar</code>. Click places the cursor, the wheel scrolls.</p>
 </div>
 
 <h2 id="checkbox">checkbox · toggle · radio</h2>

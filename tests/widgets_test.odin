@@ -608,3 +608,72 @@ widget_scroll_view_sideways :: proc(t: ^testing.T) {
 	testing.expect_value(t, view.x, 4)
 	expect_rows(t, screen_rows(&hs.buf), "efgh", "", "──━─")
 }
+
+@(test)
+widget_text_area_wraps_and_moves_by_row :: proc(t: ^testing.T) {
+	hs := harness(8, 4)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	widgets.input_set(&st, "bir iki üç dörd beş")
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+	widgets.text_area(ui, ui.area, &st)
+	// 7 columns of text, the 8th kept for the caret.
+	expect_rows(t, screen_rows(&hs.buf), "bir iki", "üç dörd", "beş", "")
+	testing.expect_value(t, hs.cursor, widgets.Cursor{3, 2, true})
+
+	// ↑ keeps the column, across rows of different byte lengths.
+	ui = frame(hs, key(.Up))
+	widgets.text_area(ui, ui.area, &st)
+	testing.expect_value(t, st.cursor, len("bir iki üç "))
+	ui = frame(hs, key(.Up), ch('X'))
+	widgets.text_area(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "birX iki üç dörd beş")
+
+	// A click on the end of a wrapped row stays on that row.
+	ui = frame(hs, click(7, 1))
+	widgets.text_area(ui, ui.area, &st)
+	testing.expect_value(t, hs.cursor.y, 1)
+}
+
+@(test)
+widget_text_area_lines_paste_scroll :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+
+	ui = frame(hs, ch('a'), key(.Enter), ch('b'), key(.Home), key(.Backspace))
+	changed := widgets.text_area(ui, ui.area, &st)
+	testing.expect(t, changed)
+	testing.expect_value(t, widgets.input_text(&st), "ab")
+	testing.expect(t, !st.submitted)
+
+	ui = frame(hs, key(.End), input.Paste{"\r\n1\r2\n3\t!\n4\x07\n5"})
+	widgets.text_area(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "ab\n1\n2\n3    !\n4\n5")
+	// The caret's row is scrolled into view.
+	expect_rows(t, screen_rows(&hs.buf), "3    !", "4", "5")
+	testing.expect_value(t, hs.cursor, widgets.Cursor{1, 2, true})
+
+	ui = frame(hs, key(.Home, {.Ctrl}))
+	widgets.text_area(ui, ui.area, &st, {scrollbar = true})
+	expect_rows(t, screen_rows(&hs.buf), "ab       ┃", "1        │", "2        │")
+
+	// Ctrl+K at a line's end joins the next line.
+	ui = frame(hs, key(.End), ch('k', {.Ctrl}))
+	widgets.text_area(ui, ui.area, &st)
+	testing.expect_value(t, widgets.input_text(&st), "ab1\n2\n3    !\n4\n5")
+}
+
+@(test)
+widget_text_area_placeholder_unfocused :: proc(t: ^testing.T) {
+	hs := harness(10, 2)
+	st: widgets.Input_State
+	ui := frame(hs, ch('x'))
+	widgets.text_area(ui, ui.area, &st, {placeholder = "Not yaz…"})
+	expect_rows(t, screen_rows(&hs.buf), "Not yaz…", "")
+	testing.expect_value(t, len(st.text), 0)
+	testing.expect(t, !hs.cursor.visible)
+}

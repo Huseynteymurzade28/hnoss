@@ -49,6 +49,8 @@ Input_Options :: widgets.Input_Options
 input_text :: widgets.input_text
 input_set :: widgets.input_set
 input_destroy :: widgets.input_destroy
+text_area :: widgets.text_area
+Text_Area_Options :: widgets.Text_Area_Options
 graph :: widgets.graph
 checkbox :: widgets.checkbox
 toggle :: widgets.toggle

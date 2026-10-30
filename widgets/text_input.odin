@@ -13,8 +13,9 @@ import "../text"
 Input_State :: struct {
 	text:      [dynamic]u8, // UTF-8
 	cursor:    int,         // byte offset, always on a grapheme boundary
-	scroll:    int,         // first visible cell
-	submitted: bool,        // Enter was pressed this frame
+	scroll:    int,         // first visible cell (in a text_area: row)
+	submitted: bool,        // Enter was pressed this frame (not in a text_area)
+	goal:      Maybe(int),  // text_area: the column ↑↓ aim for
 }
 
 Input_Options :: struct {
@@ -214,17 +215,22 @@ prev_boundary :: proc(s: string, i: int) -> int {
 @(private)
 word_start :: proc(s: string, i: int) -> int {
 	j := i
-	for j > 0 && s[j - 1] == ' ' { j -= 1 }
-	for j > 0 && s[j - 1] != ' ' { j -= 1 }
+	for j > 0 && is_blank(s[j - 1]) { j -= 1 }
+	for j > 0 && !is_blank(s[j - 1]) { j -= 1 }
 	return j
 }
 
 @(private)
 word_end :: proc(s: string, i: int) -> int {
 	j := i
-	for j < len(s) && s[j] == ' ' { j += 1 }
-	for j < len(s) && s[j] != ' ' { j += 1 }
+	for j < len(s) && is_blank(s[j]) { j += 1 }
+	for j < len(s) && !is_blank(s[j]) { j += 1 }
 	return j
+}
+
+@(private)
+is_blank :: proc(b: u8) -> bool {
+	return b == ' ' || b == '\n'
 }
 
 // Display cells taken by the text before byte offset `upto`.
