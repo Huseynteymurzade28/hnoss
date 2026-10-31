@@ -203,6 +203,58 @@ widget_list_mouse :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
 }
 
+// Several events in one frame end where the same events one frame each
+// would: every event starts from a selection and offset in range (#29).
+@(test)
+widget_list_events_in_one_frame :: proc(t: ^testing.T) {
+	hs := harness(10, 4)
+	items := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
+	st: widgets.List_State
+	run :: proc(hs: ^Harness, items: []string, st: ^widgets.List_State, events: ..input.Event) {
+		ui := frame(hs, ..events)
+		widgets.focus(ui, st)
+		widgets.list(ui, ui.area, items, st)
+	}
+
+	run(hs, items, &st, key(.Up), key(.Down))
+	testing.expect_value(t, st.selected, 1)
+	run(hs, items, &st, key(.End))
+	run(hs, items, &st, key(.Down), key(.Up))
+	testing.expect_value(t, st.selected, 8)
+	run(hs, items, &st, key(.Page_Down), key(.Page_Up))
+	testing.expect_value(t, st.selected, 6)
+	run(hs, items, &st, key(.Home), key(.Page_Up), key(.Page_Down))
+	testing.expect_value(t, st.selected, 3)
+
+	st = {}
+	run(hs, items, &st, wheel(2, 1, false), click(2, 3))
+	testing.expect_value(t, st.selected, 3)
+	run(hs, items, &st, wheel(2, 1, true), wheel(2, 1, true), wheel(2, 1, true), click(2, 0))
+	testing.expect_value(t, st.offset, 6)
+	testing.expect_value(t, st.selected, 6)
+
+	// A state from a longer list starts the frame clamped to the shorter one.
+	st = {selected = 9, offset = 6}
+	run(hs, items[:5], &st, click(2, 1))
+	testing.expect_value(t, st.offset, 1)
+	testing.expect_value(t, st.selected, 2)
+}
+
+@(test)
+widget_table_events_in_one_frame :: proc(t: ^testing.T) {
+	hs := harness(10, 4) // header + 3 rows
+	cols := []widgets.Column{{title = "N", width = layout_fill()}}
+	rows := [][]string{{"a"}, {"b"}, {"c"}, {"d"}, {"e"}}
+	st: widgets.Table_State
+	ui := frame(hs, wheel(2, 2, false), click(2, 3))
+	widgets.table(ui, ui.area, cols, rows, &st)
+	testing.expect_value(t, st.selected, 2) // row 0 is the header
+
+	ui = frame(hs, key(.Up), key(.Up), key(.Up), key(.Down))
+	widgets.table(ui, ui.area, cols, rows, &st)
+	testing.expect_value(t, st.selected, 1)
+}
+
 @(test)
 widget_list_empty :: proc(t: ^testing.T) {
 	hs := harness(10, 3)

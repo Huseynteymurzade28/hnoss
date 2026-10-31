@@ -67,7 +67,14 @@ list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := L
 select_rows :: proc(ui: ^Ui, state: ^List_State, rows: Rect, header, n: int) {
 	h := rows.height
 	page := max(h - 1, 1)
-	by_key := false
+	last := max(n - 1, 0)
+	top := max(n - h, 0)
+
+	// Every event starts from a state in range (the first one too, after n
+	// or the area changed), so a burst of events in one frame ends where the
+	// same events one frame each would.
+	state.selected = clamp(state.selected, 0, last)
+	state.offset = clamp(state.offset, 0, top)
 
 	it: Key_Iter
 	for k, i in next_key(ui, state, &it) {
@@ -91,7 +98,11 @@ select_rows :: proc(ui: ^Ui, state: ^List_State, rows: Rect, header, n: int) {
 		}
 		if used {
 			consume(ui, i)
-			by_key = true
+			state.selected = clamp(state.selected, 0, last)
+			// keep the selection on screen
+			if state.selected < state.offset { state.offset = state.selected }
+			if state.selected >= state.offset + h { state.offset = state.selected - h + 1 }
+			state.offset = clamp(state.offset, 0, top)
 		}
 	}
 
@@ -112,15 +123,8 @@ select_rows :: proc(ui: ^Ui, state: ^List_State, rows: Rect, header, n: int) {
 			case .Wheel_Up:   state.offset -= 3
 			case .Wheel_Down: state.offset += 3
 			}
+			state.offset = clamp(state.offset, 0, top)
 			consume(ui, i)
 		}
 	}
-
-	state.selected = clamp(state.selected, 0, max(n - 1, 0))
-	if by_key {
-		// keep the selection on screen
-		if state.selected < state.offset { state.offset = state.selected }
-		if state.selected >= state.offset + h { state.offset = state.selected - h + 1 }
-	}
-	state.offset = clamp(state.offset, 0, max(n - h, 0))
 }
