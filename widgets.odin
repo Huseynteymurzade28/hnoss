@@ -41,6 +41,9 @@ Table_State :: widgets.Table_State
 Table_Options :: widgets.Table_Options
 Column :: widgets.Column
 gauge :: widgets.gauge
+spinner :: widgets.spinner
+Spinner_Kind :: widgets.Spinner_Kind
+Spinner_Options :: widgets.Spinner_Options
 sparkline :: widgets.sparkline
 tabs :: widgets.tabs
 input :: widgets.input

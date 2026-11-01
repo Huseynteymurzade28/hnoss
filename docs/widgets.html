@@ -34,6 +34,7 @@
 	<a href="#scrollbar">scrollbar</a>
 	<h4>Data</h4>
 	<a href="#gauge">gauge</a>
+	<a href="#spinner">spinner</a>
 	<a href="#sparkline">sparkline</a>
 	<a href="#graph">graph</a>
 	<h4>Editing</h4>
@@ -138,6 +139,17 @@ hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true
 <div class="sig">gauge :: proc(ui: ^Ui, area: Rect, ratio: f64, label: Maybe(string) = nil)</div>
 <p>A progress bar of any height, filled in eighths of a cell. The label (default: the percentage) is centered and drawn inverted where it covers the bar.</p>
 <img src="widgets/gauge.svg" alt="gauge">
+</div>
+
+<h2 id="spinner">spinner</h2>
+<div class="widget">
+<div class="sig">spinner :: proc(ui: ^Ui, area: Rect, elapsed: time.Duration, label := "", opts := Spinner_Options{})</div>
+<p>A one-cell activity indicator with an optional markup label, cut off with <code>…</code> when it does not fit. The frame comes from <code>elapsed</code>, so it spins at the same speed whatever your frame rate. <code>kind</code> picks the frames: <code>.Dots</code> (braille, the default), <code>.Line</code> or <code>.Arc</code>; <code>interval</code> overrides the time per frame and <code>style</code> the color (default <code>theme.accent</code>).</p>
+<pre><code>start := time.tick_now()
+...
+hnoss.spinner(ui, row, time.tick_since(start), "Resolving [b]dependencies[/]")
+hnoss.spinner(ui, row2, time.tick_since(start), "Fetching", {kind = .Arc})</code></pre>
+<img src="widgets/spinner.svg" alt="spinner">
 </div>
 
 <h2 id="sparkline">sparkline</h2>

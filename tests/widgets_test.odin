@@ -1,6 +1,7 @@
 package tests
 
 import "core:testing"
+import "core:time"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -728,4 +729,42 @@ widget_text_area_placeholder_unfocused :: proc(t: ^testing.T) {
 	expect_rows(t, screen_rows(&hs.buf), "Not yaz…", "")
 	testing.expect_value(t, len(st.text), 0)
 	testing.expect(t, !hs.cursor.visible)
+}
+
+@(test)
+widget_spinner_frame_from_elapsed_time :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	ms :: time.Millisecond
+	ui := frame(hs)
+	widgets.spinner(ui, ui.area, 0, "Loading [b]pkgs[/]")
+	expect_rows(t, screen_rows(&hs.buf), "⠋ Loading pkgs")
+	testing.expect(t, style.Modifier.Bold in buffer.get(&hs.buf, 10, 0).modifiers)
+
+	// Dots: 80 ms a frame, 10 frames, wrapping around.
+	ui = frame(hs)
+	widgets.spinner(ui, ui.area, 250 * ms)
+	expect_rows(t, screen_rows(&hs.buf), "⠸")
+	ui = frame(hs)
+	widgets.spinner(ui, ui.area, 810 * ms)
+	expect_rows(t, screen_rows(&hs.buf), "⠋")
+
+	// Other kinds and a custom interval; a negative time is frame 0.
+	ui = frame(hs)
+	widgets.spinner(ui, ui.area, 2 * time.Second, "", {kind = .Line, interval = time.Second})
+	expect_rows(t, screen_rows(&hs.buf), "|")
+	ui = frame(hs)
+	widgets.spinner(ui, ui.area, -time.Second, "", {kind = .Arc})
+	expect_rows(t, screen_rows(&hs.buf), "◜")
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).fg, ui.theme.accent.fg)
+}
+
+@(test)
+widget_spinner_label_clipped :: proc(t: ^testing.T) {
+	hs := harness(8, 1)
+	ui := frame(hs)
+	widgets.spinner(ui, ui.area, 0, "Downloading")
+	expect_rows(t, screen_rows(&hs.buf), "⠋ Downl…")
+	ui = frame(hs)
+	widgets.spinner(ui, {0, 0, 2, 1}, 0, "hidden")
+	expect_rows(t, screen_rows(&hs.buf), "⠋")
 }
