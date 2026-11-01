@@ -1,0 +1,4 @@
+# Dev tooling (screenshots, recordings, the build script) is not part of the
+# library; keep it out of GitHub's language stats so they show the library itself.
+tools/**  linguist-detectable=false
+build.sh  linguist-detectable=false

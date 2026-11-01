@@ -3,3 +3,4 @@
 *.bin
 *.exe
 .claude/settings.local.json
+__pycache__/
