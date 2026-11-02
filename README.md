@@ -25,8 +25,8 @@
 
 | | | |
 |:-:|:-:|:-:|
-| ![showcase](docs/gallery/showcase.svg)<br>**Widgets**<br><sub>tabs, lists, braille graph, table, gauges, input</sub> | ![plasma](docs/gallery/plasma.svg)<br>**Truecolor at 60 fps**<br><sub>double-buffered diff, one write per frame</sub> | ![text](docs/gallery/text.svg)<br>**Text & markup**<br><sub>wrapping by grapheme, `[b red]markup[/]`</sub> |
-| ![layout](docs/gallery/layout.svg)<br>**Layout**<br><sub>cuts, split, grid, center</sub> | ![list](docs/gallery/list.svg)<br>**Stateful widgets**<br><sub>keyboard, mouse, focus</sub> | ![events](docs/gallery/events.svg)<br>**Input**<br><sub>keys, modifiers, mouse, paste</sub> |
+| ![showcase](docs/gallery/showcase.svg)<br>**Widgets**<br><sub>tabs, lists, table, graphs, forms, modals, text area</sub> | ![plasma](docs/gallery/plasma.svg)<br>**Truecolor at 60 fps**<br><sub>double-buffered diff, one write per frame</sub> | ![text](docs/gallery/text.svg)<br>**Text & markup**<br><sub>wrapping by grapheme, `[b red]markup[/]`</sub> |
+| ![layout](docs/gallery/layout.svg)<br>**Layout**<br><sub>cuts, split, grid, center</sub> | ![list](docs/gallery/list.svg)<br>**Stateful widgets**<br><sub>keyboard, mouse, focus</sub> | ![events](docs/gallery/events.svg)<br>**Input**<br><sub>keys, modifiers, mouse, paste, focus</sub> |
 
 ## Install
 
