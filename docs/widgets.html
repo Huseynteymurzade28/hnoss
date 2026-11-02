@@ -42,6 +42,7 @@
 	<a href="#text_area">text_area</a>
 	<a href="#checkbox">checkbox · toggle · radio</a>
 	<a href="#button">button</a>
+	<a href="#select">select</a>
 	<h4>Overlays</h4>
 	<a href="#modal">modal</a>
 </aside>
@@ -240,6 +241,20 @@ hnoss.focus_order(ui, {&amp;save, &amp;cancel})
 <span class="k">if</span> hnoss.button(ui, cols[0], <span class="s">"Save"</span>, &amp;save) { write_file() }
 <span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Cancel"</span>, &amp;cancel) { close() }</code></pre>
 <p>Theme: <code>button</code>, <code>button_focused</code>, <code>button_pressed</code>.</p>
+</div>
+
+<h2 id="select">select</h2>
+<div class="widget">
+<div class="sig">select :: proc(ui: ^Ui, area: Rect, items: []string, state: ^Select_State, opts := Select_Options{}) -&gt; (changed: bool)</div>
+<p>A dropdown: a closed field showing <code>items[state.selected]</code> with a <code>▾</code>, styled like a <a href="#button">button</a>. Opened, its options appear in a bordered list under the field, or above it when there is more room there, as wide as the field and drawn over every other widget (by <code>end_frame</code>, after everything else). Returns <code>true</code> when the choice changed.</p>
+<p>While open it takes all of the frame's input, from inside a <a href="#modal">modal</a> too: <kbd>Esc</kbd> closes the options, not the dialog under them, and app shortcuts in <code>unhandled</code> don't fire. <code>max_rows</code> (default 8) caps the list's height, the rest scrolls; <code>markup</code> treats items as markup.</p>
+<img src="widgets/select.svg" alt="select">
+<p class="keys">Keys (focused): <kbd>Enter</kbd> <kbd>Space</kbd> · click to open. Open: <kbd>↑</kbd> <kbd>↓</kbd> (<kbd>k</kbd> <kbd>j</kbd>) <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd> · <kbd>Enter</kbd> <kbd>Space</kbd> or a click picks · <kbd>Esc</kbd> or a click outside closes · the wheel scrolls.</p>
+<pre><code>city: hnoss.Select_State
+<span class="k">if</span> hnoss.select(ui, row, cities, &amp;city) {
+    load_weather(cities[city.selected])
+}</code></pre>
+<p>Theme: <code>button</code>, <code>button_focused</code> for the field; <code>modal</code>, <code>border_focused</code>, <code>selected</code> for the options. Calling <code>widgets.begin</code> yourself (without <code>hnoss.ui</code>)? Call <code>widgets.end(ui)</code> before rendering, or the options aren't drawn.</p>
 </div>
 
 <h2 id="modal">modal</h2>

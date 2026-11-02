@@ -69,6 +69,7 @@ Frame :: struct {
 	count:  u64, // frame number, starting at 0
 	cursor: widgets.Cursor, // set it visible to show the terminal cursor there
 	memory: ^widgets.Memory,
+	ui:     ^widgets.Ui, // set by `ui`; end_frame draws its overlay layer
 }
 
 init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Terminal, err: Error) {
@@ -119,6 +120,10 @@ begin_frame :: proc(t: ^Terminal) -> ^Frame {
 // Diffs the frame against what is on screen and writes the changes with a
 // single flush.
 end_frame :: proc(t: ^Terminal) -> Error {
+	if t.frame.ui != nil {
+		widgets.end(t.frame.ui)
+		t.frame.ui = nil
+	}
 	back := &t.buffers[t.current]
 	front := &t.buffers[1 - t.current]
 

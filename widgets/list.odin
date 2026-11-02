@@ -34,15 +34,24 @@ list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := L
 	old := state.selected
 	n := len(items)
 	select_rows(ui, state, body, 0, n)
-	marker := opts.marker.? or_else "› "
-
 	row_style := ui.theme.selected if focused(ui, state) else ui.theme.selected_unfocused
+	draw_rows(ui, body, items, state.selected, state.offset, row_style, opts.marker.? or_else "› ", opts.markup)
+
+	if bar.width > 0 {
+		scrollbar(ui, bar, n, body.height, &state.offset)
+	}
+	return state.selected != old
+}
+
+// Draws the items from `offset` down `body`, the `selected` one filled
+// with `row_style` and preceded by `marker`.
+@(private)
+draw_rows :: proc(ui: ^Ui, body: Rect, items: []string, selected, offset: int, row_style: Style, marker: string, markup: bool) {
 	mw := text.width(marker)
-	for i in state.offset ..< min(state.offset + body.height, n) {
-		y := body.y + i - state.offset
-		row := Rect{body.x, y, body.width, 1}
-		selected := i == state.selected
-		if selected {
+	for i in offset ..< min(offset + body.height, len(items)) {
+		y := body.y + i - offset
+		if i == selected {
+			row := Rect{body.x, y, body.width, 1}
 			buffer.fill(ui.buf, row, row_style)
 			p := pen.begin(ui.buf, row, .Clip)
 			pen.write(&p, marker)
@@ -50,14 +59,9 @@ list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := L
 		}
 		item := Rect{body.x + mw, y, body.width - mw, 1}
 		p := pen.begin(ui.buf, item, .Ellipsis, base = ui.theme.text)
-		if opts.markup { pen.markup(&p, items[i]) } else { pen.write(&p, items[i]) }
+		if markup { pen.markup(&p, items[i]) } else { pen.write(&p, items[i]) }
 		pen.finish(&p)
 	}
-
-	if bar.width > 0 {
-		scrollbar(ui, bar, n, body.height, &state.offset)
-	}
-	return state.selected != old
 }
 
 // Keyboard and mouse handling shared by list and table: `rows` is the

@@ -24,6 +24,23 @@ Ui :: struct {
 	cursor:  ^Cursor,
 	theme:   Theme,
 	held:    []input.Event, // this frame's events, held back from the widgets under a modal
+
+	// While a popup (a select's options) was open last frame, it gets the
+	// whole frame's input: `popup` is its `open` flag, `popup_events` the
+	// events, and nobody else sees any.
+	popup:        ^bool,
+	popup_events: []input.Event,
+	overlay:      Maybe(Overlay), // drawn over everything by `end`
+}
+
+// A popup list to draw on top of the frame once every widget is drawn.
+@(private)
+Overlay :: struct {
+	area:     Rect, // with its border
+	items:    []string,
+	selected: int,
+	offset:   int,
+	markup:   bool,
 }
 
 // State kept across frames, owned by the Terminal.
@@ -31,6 +48,7 @@ Memory :: struct {
 	focus:  rawptr, // state pointer of the widget receiving keys
 	active: rawptr, // widget being dragged with the mouse
 	modal:  ^bool,  // `open` of the modal drawn last frame
+	popup:  ^bool,  // `open` of the popup drawn last frame
 }
 
 // Where to show the terminal's own cursor after this frame (TextInput
@@ -51,14 +69,43 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		cursor  = cursor,
 		theme   = theme,
 	}
-	// While a modal is open, the widgets drawn before it see no events;
-	// `modal` hands them back.
-	if mem.modal != nil && mem.modal^ {
+	// An open popup takes every event, even from inside a modal. While a
+	// modal is open, the widgets drawn before it see no events; `modal`
+	// hands them back.
+	if mem.popup != nil && mem.popup^ {
+		ui.popup = mem.popup
+		ui.popup_events = events
+		ui.events = events[:0]
+	} else if mem.modal != nil && mem.modal^ {
 		ui.held = events
 		ui.events = events[:0]
 	}
 	mem.modal = nil
+	mem.popup = nil
 	return ui
+}
+
+// Finishes this frame's widgets by drawing the overlay layer (an open
+// select's options) over everything else. end_frame calls it for you.
+end :: proc(ui: ^Ui) {
+	o, ok := ui.overlay.?
+	if !ok {
+		return
+	}
+	ui.overlay = nil
+	clip := buffer.set_clip(ui.buf, ui.buf.area) // not cut by a scroll view
+	defer buffer.set_clip(ui.buf, clip)
+	events := ui.events
+	ui.events = nil // the scrollbar only draws
+	defer ui.events = events
+
+	blank(ui.buf, o.area)
+	rows := box(ui, o.area, "", {focused = true, fill = ui.theme.modal})
+	offset := o.offset
+	if len(o.items) > rows.height {
+		scrollbar(ui, layout.cut_right(&rows, 1), len(o.items), rows.height, &offset)
+	}
+	draw_rows(ui, rows, o.items, o.selected, o.offset, ui.theme.selected, "› ", o.markup)
 }
 
 // Gives keyboard focus to the widget whose state is `id` (nil: nobody).

@@ -42,14 +42,7 @@ modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -> (inner: Rect) {
 	}
 
 	dim(ui.buf)
-	// fill patches styles over what is there; start the dialog from nothing
-	r := layout.rect_intersection(area, ui.buf.area)
-	for y in r.y ..< r.y + r.height {
-		for x in r.x ..< r.x + r.width {
-			c := buffer.get(ui.buf, x, y)
-			c.fg, c.bg, c.modifiers = nil, nil, {}
-		}
-	}
+	blank(ui.buf, area)
 	return box(ui, area, title, {focused = true, fill = ui.theme.modal})
 }
 
@@ -67,5 +60,18 @@ dim :: proc(b: ^buffer.Buffer) {
 		ok: bool
 		if c.fg, ok = fade(c.fg); !ok { c.modifiers += {.Dim} }
 		if c.bg, ok = fade(c.bg); !ok { c.bg = nil }
+	}
+}
+
+// Clears the styles in `area`: fill patches styles over what is there, and
+// a dialog or popup should start from nothing.
+@(private)
+blank :: proc(b: ^buffer.Buffer, area: Rect) {
+	r := layout.rect_intersection(area, b.area)
+	for y in r.y ..< r.y + r.height {
+		for x in r.x ..< r.x + r.width {
+			c := buffer.get(b, x, y)
+			c.fg, c.bg, c.modifiers = nil, nil, {}
+		}
 	}
 }

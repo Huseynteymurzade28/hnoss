@@ -13,7 +13,8 @@ DEFAULT_THEME :: widgets.DEFAULT_THEME
 //	f := hnoss.begin_frame(&term)
 //	ui := hnoss.ui(f, events)
 ui :: proc(f: ^Frame, events: []Event, theme := DEFAULT_THEME) -> ^Ui {
-	return widgets.begin(f.buffer, events, f.memory, &f.cursor, theme)
+	f.ui = widgets.begin(f.buffer, events, f.memory, &f.cursor, theme)
+	return f.ui
 }
 
 focus :: widgets.focus
@@ -59,6 +60,9 @@ checkbox :: widgets.checkbox
 toggle :: widgets.toggle
 radio :: widgets.radio
 button :: widgets.button
+select :: widgets.select
+Select_State :: widgets.Select_State
+Select_Options :: widgets.Select_Options
 Button_State :: widgets.Button_State
 modal :: widgets.modal
 Graph_Options :: widgets.Graph_Options

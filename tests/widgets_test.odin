@@ -768,3 +768,94 @@ widget_spinner_label_clipped :: proc(t: ^testing.T) {
 	widgets.spinner(ui, {0, 0, 2, 1}, 0, "hidden")
 	expect_rows(t, screen_rows(&hs.buf), "⠋")
 }
+
+@(test)
+widget_select :: proc(t: ^testing.T) {
+	hs := harness(14, 8)
+	items := []string{"Bakı", "Gəncə", "Şəki"}
+	sel: widgets.Select_State
+	area := widgets.Rect{2, 1, 10, 1}
+
+	ui := frame(hs)
+	widgets.focus(ui, &sel)
+	testing.expect(t, !widgets.select(ui, area, items, &sel))
+	widgets.end(ui)
+	expect_rows(t, screen_rows(&hs.buf), "", "   Bakı   ▾", "")
+
+	// Enter opens it; the options are drawn by `end`, under the field.
+	ui = frame(hs, key(.Enter))
+	testing.expect(t, !widgets.select(ui, area, items, &sel))
+	widgets.end(ui)
+	testing.expect(t, sel.open)
+	expect_rows(t, screen_rows(&hs.buf),
+		"",
+		"   Bakı   ▴",
+		"  ╭────────╮",
+		"  │› Bakı  │",
+		"  │  Gəncə │",
+		"  │  Şəki  │",
+		"  ╰────────╯",
+		"")
+
+	// While open it takes every event, from widgets before and after it.
+	list: widgets.List_State
+	ui = frame(hs, key(.Down), ch('q'))
+	widgets.list(ui, {0, 7, 14, 1}, items, &list)
+	testing.expect(t, !widgets.select(ui, area, items, &sel))
+	testing.expect_value(t, sel.highlight, 1)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+	ui = frame(hs, key(.Enter))
+	testing.expect(t, widgets.select(ui, area, items, &sel))
+	testing.expect_value(t, sel.selected, 1)
+	testing.expect(t, !sel.open)
+
+	// Esc closes without picking; so does a click outside.
+	ui = frame(hs, key(.Enter))
+	widgets.select(ui, area, items, &sel)
+	ui = frame(hs, key(.Down), key(.Esc))
+	testing.expect(t, !widgets.select(ui, area, items, &sel))
+	testing.expect(t, !sel.open)
+	ui = frame(hs, click(3, 1))
+	widgets.select(ui, area, items, &sel)
+	testing.expect(t, sel.open)
+	ui = frame(hs, click(0, 0))
+	testing.expect(t, !widgets.select(ui, area, items, &sel))
+	testing.expect(t, !sel.open)
+
+	// A click on an option picks it.
+	ui = frame(hs, click(3, 1))
+	widgets.select(ui, area, items, &sel)
+	ui = frame(hs, click(5, 5))
+	testing.expect(t, widgets.select(ui, area, items, &sel))
+	testing.expect_value(t, sel.selected, 2)
+}
+
+@(test)
+widget_select_opens_above_and_inside_a_modal :: proc(t: ^testing.T) {
+	hs := harness(14, 8)
+	items := []string{"Bakı", "Gəncə", "Şəki", "Quba"}
+	sel := widgets.Select_State{selected = 3}
+	area := widgets.Rect{2, 6, 10, 1}
+	dialog := true
+
+	draw :: proc(ui: ^widgets.Ui, dialog: ^bool, area: widgets.Rect, items: []string, sel: ^widgets.Select_State) {
+		widgets.modal(ui, ui.area, dialog)
+		widgets.focus(ui, sel)
+		widgets.select(ui, area, items, sel, {max_rows = 3})
+		widgets.end(ui)
+	}
+
+	// No room below: the options go above, scrolled to the choice.
+	ui := frame(hs, key(.Enter))
+	draw(ui, &dialog, area, items, &sel)
+	rows := screen_rows(&hs.buf)
+	testing.expect_value(t, rows[1], "│ ╭────────╮ │")
+	testing.expect_value(t, rows[4], "│ │› Quba ┃│ │")
+	testing.expect_value(t, rows[5], "│ ╰────────╯ │")
+
+	// Esc closes the options, not the dialog under them.
+	ui = frame(hs, key(.Esc))
+	draw(ui, &dialog, area, items, &sel)
+	testing.expect(t, !sel.open)
+	testing.expect(t, dialog)
+}
