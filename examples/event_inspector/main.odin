@@ -1,6 +1,7 @@
 // Phase 3 example: prints every input event as it arrives.
 // Mouse capture is on, so clicks, drags, motion and the wheel show up too;
-// paste something to see a bracketed Paste event.
+// paste something to see a bracketed Paste event, switch to another window
+// and back for Focus events.
 //   Ctrl+C  quit   (q is just another key here)
 package main
 
@@ -18,7 +19,7 @@ MAX_LOG :: 1000
 main :: proc() {
 	context.assertion_failure_proc = backend.assertion_failure_proc
 
-	term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})
+	term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture, .Focus_Events})
 	if err != .None {
 		fmt.eprintfln("hnoss: init failed: %v", err)
 		os.exit(1)
@@ -91,6 +92,8 @@ describe :: proc(ev: hnoss.Event) -> string {
 		return fmt.aprintf("Paste   %d bytes: %q%s", len(e.text), preview, "…" if len(e.text) > 60 else "")
 	case input.Resize:
 		return fmt.aprintf("Resize  %dx%d", e.cols, e.rows)
+	case input.Focus:
+		return fmt.aprintf("Focus   %s", "gained" if e.gained else "lost")
 	}
 	return strings.clone("?")
 }

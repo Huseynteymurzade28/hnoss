@@ -311,6 +311,10 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 		case 24:     code = .F12
 		case:        return nil, n, .Skip
 		}
+	case 'I', 'O':
+		// Focus reports (xterm ?1004): CSI I in, CSI O out.
+		if nparams > 0 { return nil, n, .Skip }
+		return Focus{gained = final == 'I'}, n, .Event
 	case 'u':
 		// CSI codepoint ; modifiers u (fixterms / kitty, used by some
 		// terminals for keys like Ctrl+Enter even without the protocol).
@@ -319,7 +323,7 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 		if !ok { return nil, n, .Skip }
 		return k, n, .Event
 	case:
-		return nil, n, .Skip // focus in/out, cursor reports, ...
+		return nil, n, .Skip // cursor reports, ...
 	}
 	return Key{code = code, mods = mods}, n, .Event
 }

@@ -52,7 +52,7 @@ input :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Input_Options{})
 				insert(state, single_line(e.text))
 				consume(ui, i)
 				changed = true
-			case input.Mouse, input.Resize:
+			case input.Mouse, input.Resize, input.Focus:
 			}
 		}
 	}

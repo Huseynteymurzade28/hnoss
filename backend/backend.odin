@@ -25,6 +25,9 @@ Option :: enum u8 {
 	// don't implement it ignore the request.
 	// https://sw.kovidgoyal.net/kitty/keyboard-protocol/
 	Kitty_Keyboard,
+	// Report when the terminal window gains or loses focus (xterm ?1004)
+	// as Focus events. Off by default.
+	Focus_Events,
 }
 Options :: bit_set[Option; u8]
 
@@ -76,6 +79,8 @@ DISABLE_BRACKETED_PASTE :: "\x1b[?2004l"
 // per screen, so push after entering the alt screen and pop before leaving.
 ENABLE_KITTY_KEYBOARD  :: "\x1b[>1u\x1b[?u"
 DISABLE_KITTY_KEYBOARD :: "\x1b[<u"
+ENABLE_FOCUS_EVENTS  :: "\x1b[?1004h"
+DISABLE_FOCUS_EVENTS :: "\x1b[?1004l"
 ENABLE_MOUSE  :: "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h"
 DISABLE_MOUSE :: "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l"
 

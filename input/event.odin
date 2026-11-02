@@ -5,6 +5,7 @@ Event :: union {
 	Mouse,
 	Paste,
 	Resize,
+	Focus,
 }
 
 Key_Code :: enum u8 {
@@ -77,6 +78,11 @@ Resize :: struct {
 	cols, rows: int,
 }
 
+// The terminal window gained or lost focus (needs Option.Focus_Events).
+Focus :: struct {
+	gained: bool,
+}
+
 // Convenience for the most common check: `if input.is_char(ev, 'q') {...}`.
 is_char :: proc(ev: Event, r: rune, mods: Key_Modifiers = {}) -> bool {
 	k, ok := ev.(Key)
@@ -86,4 +92,10 @@ is_char :: proc(ev: Event, r: rune, mods: Key_Modifiers = {}) -> bool {
 is_key :: proc(ev: Event, code: Key_Code, mods: Key_Modifiers = {}) -> bool {
 	k, ok := ev.(Key)
 	return ok && k.code == code && k.mods == mods
+}
+
+// `if input.is_focus(ev, false) { pause() }`: the window lost focus.
+is_focus :: proc(ev: Event, gained: bool) -> bool {
+	f, ok := ev.(Focus)
+	return ok && f.gained == gained
 }

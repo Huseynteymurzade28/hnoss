@@ -158,9 +158,28 @@ input_sequences_split_across_reads :: proc(t: ^testing.T) {
 }
 
 @(test)
+input_focus_reports :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[I", input.Focus{gained = true})
+	expect_events(t, "\x1b[O", input.Focus{gained = false})
+	expect_events(t, "a\x1b[Ob\x1b[Ic", ch('a'), input.Focus{}, ch('b'), input.Focus{gained = true}, ch('c'))
+
+	// Split across reads: a lone ESC [ waits for the final byte.
+	p: input.Parser
+	input.parser_init(&p, context.temp_allocator)
+	events := make([dynamic]input.Event, context.temp_allocator)
+	input.feed(&p, transmute([]u8)string("\x1b["), &events)
+	testing.expect_value(t, len(events), 0)
+	input.feed(&p, transmute([]u8)string("O"), &events)
+	testing.expect_value(t, len(events), 1)
+	testing.expect_value(t, events[0], input.Event(input.Focus{}))
+	testing.expect(t, input.is_focus(events[0], false))
+	testing.expect(t, !input.is_focus(events[0], true))
+}
+
+@(test)
 input_garbage_is_dropped :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[?1;2c" + "a", ch('a'))       // DA reply
-	expect_events(t, "\x1b[I\x1b[O" + "b", ch('b'))     // focus in/out
+	expect_events(t, "\x1b[2I" + "b", ch('b'))          // CSI I with a param isn't focus
 	expect_events(t, "\x80\xff" + "c", ch('c'))          // invalid UTF-8
 	expect_events(t, "\x1b[99~" + "d", ch('d'))          // unknown ~ key
 }

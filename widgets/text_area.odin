@@ -54,7 +54,7 @@ text_area :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Text_Area_Op
 				consume(ui, i)
 				edited, moved = true, true
 				state.goal = nil
-			case input.Mouse, input.Resize:
+			case input.Mouse, input.Resize, input.Focus:
 			}
 			if edited {
 				changed = true

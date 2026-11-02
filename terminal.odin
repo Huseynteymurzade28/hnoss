@@ -26,7 +26,9 @@ Key_Modifiers :: input.Key_Modifiers
 Mouse :: input.Mouse
 Paste :: input.Paste
 Resize :: input.Resize
+Focus :: input.Focus
 is_char :: input.is_char
+is_focus :: input.is_focus
 is_key :: input.is_key
 
 // How long a lone ESC waits for the rest of an escape sequence before it is

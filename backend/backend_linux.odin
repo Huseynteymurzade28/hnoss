@@ -75,6 +75,7 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	push_seq(RESET_SGR)
 	if .Mouse_Capture in opts { push_seq(DISABLE_MOUSE) }
 	if .Bracketed_Paste in opts { push_seq(DISABLE_BRACKETED_PASTE) }
+	if .Focus_Events in opts { push_seq(DISABLE_FOCUS_EVENTS) }
 	if .Hide_Cursor in opts { push_seq(SHOW_CURSOR) }
 	if .Kitty_Keyboard in opts { push_seq(DISABLE_KITTY_KEYBOARD) }
 	if .Alt_Screen in opts { push_seq(LEAVE_ALT_SCREEN) }
@@ -95,6 +96,7 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	if .Bracketed_Paste in opts { write(b, ENABLE_BRACKETED_PASTE) }
 	if .Mouse_Capture in opts { write(b, ENABLE_MOUSE) }
 	if .Kitty_Keyboard in opts { write(b, ENABLE_KITTY_KEYBOARD) }
+	if .Focus_Events in opts { write(b, ENABLE_FOCUS_EVENTS) }
 	write(b, CLEAR_SCREEN)
 	write(b, CURSOR_HOME)
 	return flush(b)
