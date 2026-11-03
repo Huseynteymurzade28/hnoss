@@ -68,7 +68,12 @@ widget_box_borders_and_title :: proc(t: ^testing.T) {
 	ui := frame(hs)
 	inner := widgets.box(ui, ui.area, "Hi")
 	testing.expect_value(t, inner, widgets.Rect{1, 1, 10, 2})
-	expect_rows(t, screen_rows(&hs.buf), "╭ Hi ──────╮", "│          │", "│          │", "╰──────────╯")
+	expect_screen(t, &hs.buf, `
+		╭ Hi ──────╮
+		│          │
+		│          │
+		╰──────────╯
+	`)
 
 	ui = frame(hs)
 	widgets.box(ui, ui.area, "a very long title", {border = .Double, align = .Right})
@@ -109,8 +114,12 @@ widget_paragraph_scrollbar :: proc(t: ^testing.T) {
 	st: widgets.Scroll_State
 	ui := frame(hs)
 	widgets.paragraph(ui, ui.area, "1\n2\n3\n4\n5\n6\n7\n8", &st, {scrollbar = true})
-	rows := screen_rows(&hs.buf)
-	expect_rows(t, rows, "1    ┃", "2    ┃", "3    │", "4    │")
+	expect_screen(t, &hs.buf, `
+		1    ┃
+		2    ┃
+		3    │
+		4    │
+	`)
 }
 
 @(test)
@@ -163,14 +172,22 @@ widget_list_keys_scroll_and_activate :: proc(t: ^testing.T) {
 	ui := frame(hs)
 	widgets.focus(ui, &st)
 	widgets.list(ui, ui.area, items, &st)
-	expect_rows(t, screen_rows(&hs.buf), "› alpha", "  beta", "  gamma")
+	expect_screen(t, &hs.buf, `
+		› alpha
+		  beta
+		  gamma
+	`)
 
 	ui = frame(hs, key(.Down), ch('j'), ch('j'), ch('x'))
 	changed := widgets.list(ui, ui.area, items, &st)
 	testing.expect(t, changed)
 	testing.expect_value(t, st.selected, 3)
 	testing.expect_value(t, st.offset, 1) // scrolled so "delta" is visible
-	expect_rows(t, screen_rows(&hs.buf), "  beta", "  gamma", "› delta")
+	expect_screen(t, &hs.buf, `
+		  beta
+		  gamma
+		› delta
+	`)
 	testing.expect_value(t, len(widgets.unhandled(ui)), 1) // 'x' is not ours
 
 	ui = frame(hs, key(.End), key(.Enter))
@@ -279,7 +296,13 @@ widget_table_columns_and_selection :: proc(t: ^testing.T) {
 	ui := frame(hs, click(3, 2))
 	widgets.table(ui, ui.area, cols, rows, &st)
 	testing.expect_value(t, st.selected, 1) // row 0 is the header
-	expect_rows(t, screen_rows(&hs.buf), "Name             CPU", "odin             12%", "bash              3%", "a-very-long-n…  100%") // name column: 20 - 5 - 1 gap = 14 cells
+	// Name column: 20 - 5 - 1 gap = 14 cells.
+	expect_screen(t, &hs.buf, `
+		Name             CPU
+		odin             12%
+		bash              3%
+		a-very-long-n…  100%
+	`)
 }
 
 @(private = "file")
@@ -292,8 +315,8 @@ widget_gauge_eighths_and_label :: proc(t: ^testing.T) {
 	widgets.gauge(ui, ui.area, 0.55) // 5.5 cells = 44 eighths: 5 full + "▌", label centered at col 3
 	expect_rows(t, screen_rows(&hs.buf), "███55%")
 	// The label's first two cells sit on the filled part and are inverted.
-	testing.expect_value(t, buffer.get(&hs.buf, 4, 0).bg, ui.theme.gauge_filled.fg)
-	testing.expect_value(t, buffer.get(&hs.buf, 6, 0).bg, ui.theme.gauge_empty.bg)
+	expect_style(t, &hs.buf, {bg = ui.theme.gauge_filled.fg}, "   ##")
+	expect_style(t, &hs.buf, {bg = ui.theme.gauge_empty.bg}, "###  #####")
 
 	ui = frame(hs)
 	widgets.gauge(ui, ui.area, 0.43, "")
@@ -511,7 +534,11 @@ widget_radio :: proc(t: ^testing.T) {
 	sel := 0
 	ui := frame(hs)
 	widgets.radio(ui, ui.area, options, &sel)
-	expect_rows(t, screen_rows(&hs.buf), "◉ Bakı", "○ Gəncə", "○ Şəki", "")
+	expect_screen(t, &hs.buf, `
+		◉ Bakı
+		○ Gəncə
+		○ Şəki
+	`)
 
 	ui = frame(hs, click(3, 2))
 	testing.expect(t, widgets.radio(ui, ui.area, options, &sel))
@@ -541,7 +568,11 @@ widget_button :: proc(t: ^testing.T) {
 	ui = frame(hs, click(5, 1))
 	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
 	testing.expect(t, widgets.focused(ui, &ok))
-	testing.expect_value(t, hs.buf.cells[1 * 12].bg, ui.theme.button_pressed.bg)
+	expect_style(t, &hs.buf, {bg = ui.theme.button_pressed.bg}, `
+		############
+		############
+		############
+	`)
 	ui = frame(hs, click(6, 1, .Release))
 	testing.expect(t, widgets.button(ui, ui.area, "OK", &ok))
 	testing.expect(t, ok.pressed)
@@ -617,7 +648,12 @@ widget_scroll_view :: proc(t: ^testing.T) {
 	// so it is clipped and a click where it would be doesn't reach it.
 	ui := frame(hs, click(3, 6))
 	scroll_lines(ui, &view, &list)
-	expect_rows(t, screen_rows(&hs.buf), "0      ┃", "1      │", "2      │", "3      │")
+	expect_screen(t, &hs.buf, `
+		0      ┃
+		1      │
+		2      │
+		3      │
+	`)
 	testing.expect_value(t, hs.buf.clip, hs.buf.area)
 	testing.expect(t, !widgets.focused(ui, &list))
 	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
@@ -625,7 +661,12 @@ widget_scroll_view :: proc(t: ^testing.T) {
 	ui = frame(hs, wheel(1, 1, true))
 	scroll_lines(ui, &view, &list)
 	testing.expect_value(t, view.y, 3)
-	expect_rows(t, screen_rows(&hs.buf), "3      │", "4      │", "5 › a  ┃", "6   b  │")
+	expect_screen(t, &hs.buf, `
+		3      │
+		4      │
+		5 › a  ┃
+		6   b  │
+	`)
 
 	// Now on screen, the list takes the click and the focus.
 	ui = frame(hs, click(3, 3))
@@ -639,7 +680,12 @@ widget_scroll_view :: proc(t: ^testing.T) {
 	testing.expect(t, widgets.focused(ui, &view))
 	ui = frame(hs, key(.End))
 	scroll_lines(ui, &view, &list)
-	expect_rows(t, screen_rows(&hs.buf), "6 › b  │", "7      │", "8      │", "9      ┃")
+	expect_screen(t, &hs.buf, `
+		6 › b  │
+		7      │
+		8      │
+		9      ┃
+	`)
 }
 
 @(test)
@@ -654,12 +700,20 @@ widget_scroll_view_sideways :: proc(t: ^testing.T) {
 	widgets.focus(frame(hs), &view)
 	ui := frame(hs, key(.Right))
 	draw(ui, &view)
-	expect_rows(t, screen_rows(&hs.buf), "bcde", "", "─━──")
+	expect_screen(t, &hs.buf, `
+		bcde
+
+		─━──
+	`)
 
 	ui = frame(hs, input.Mouse{kind = .Scroll, button = .Wheel_Down, x = 0, y = 0, mods = {.Shift}})
 	draw(ui, &view)
 	testing.expect_value(t, view.x, 4)
-	expect_rows(t, screen_rows(&hs.buf), "efgh", "", "──━─")
+	expect_screen(t, &hs.buf, `
+		efgh
+
+		──━─
+	`)
 }
 
 @(test)
