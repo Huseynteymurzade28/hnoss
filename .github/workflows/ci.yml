@@ -9,8 +9,12 @@ env:
   ODIN_RELEASE: dev-2026-10 # the one place the compiler version is pinned
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false # a macOS failure shouldn't cancel the Linux run, and vice versa
+      matrix:
+        os: [ubuntu-latest, macos-latest] # macos-latest is Apple Silicon (arm64)
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: laytan/setup-odin@v2
