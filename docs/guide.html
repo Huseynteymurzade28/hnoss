@@ -58,7 +58,7 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <pre><code>odin run . -collection:libs=libs</code></pre>
 <pre><code><span class="k">import</span> hnoss <span class="s">"libs:hnoss"</span></code></pre>
 <p>To stay on a released version, check out a tag inside the submodule (<code>git -C libs/hnoss checkout v0.2.0</code>) and commit the submodule.</p>
-<p>Linux is supported today. The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
+<p>hnoss runs on Linux and macOS (Intel and Apple Silicon). The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
 
 <h2 id="loop">The frame loop</h2>
 <p>hnoss is immediate mode: each frame you describe the whole screen, then hnoss compares it with the previous frame and writes only the difference.</p>

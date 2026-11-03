@@ -77,7 +77,7 @@ main :: proc() {
 
 ## Why hnoss
 
-- **Pure Odin.** Only `core:` and `base:`; raw syscalls on Linux, no ncurses, no libc bindings.
+- **Pure Odin.** Only `core:` and `base:`; raw syscalls on Linux, `core:sys/posix` on macOS. No ncurses, no C.
 - **Immediate mode.** Calling a widget draws it, handles its input and returns what happened.
 - **Fast.** Only changed cells are written; a full 200×60 truecolor frame diffs in ~2 ms.
 - **Correct text.** Unicode 16 widths and grapheme clusters: `世界`, `é`, `👩‍💻`, `🇦🇿`.
@@ -90,7 +90,7 @@ main :: proc() {
 ./build.sh run demo        # or: showcase, monitor, plasma, text, layout, event_inspector, w_<widget>
 ```
 
-Linux today; the platform layer is one small file so macOS/Windows can follow.
+Runs on Linux and macOS (Intel and Apple Silicon); CI builds and tests both. Windows is [#5](https://github.com/Huseynteymurzade28/hnoss/issues/5). `examples/monitor` reads `/proc`, so it is Linux-only.
 
 ## License
 

@@ -41,7 +41,7 @@
 	<h2>Why hnoss</h2>
 	<p class="lead">Describe the whole UI every frame; hnoss works out what changed and writes only that.</p>
 	<div class="features">
-		<div class="feature"><h3><b>◆</b> Pure Odin</h3><p>Only <code>core:</code> and <code>base:</code>. Raw syscalls on Linux, no ncurses, no termbox, no libc bindings.</p></div>
+		<div class="feature"><h3><b>◆</b> Pure Odin</h3><p>Only <code>core:</code> and <code>base:</code>. Raw syscalls on Linux, <code>core:sys/posix</code> on macOS. No ncurses, no termbox, no C.</p></div>
 		<div class="feature"><h3><b>◆</b> Widgets are procedures</h3><p>Calling one draws it, handles its own keys and mouse, and returns what happened. State is yours.</p></div>
 		<div class="feature"><h3><b>◆</b> Fast by default</h3><p>Double-buffered diff, minimal cursor moves and SGR, synchronized output, one write per frame.</p></div>
 		<div class="feature"><h3><b>◆</b> Text done right</h3><p>Unicode 16 widths and grapheme clusters: <code>世界</code>, <code>é</code>, <code>👩‍💻</code>, <code>🇦🇿</code> wrap and align correctly.</p></div>
