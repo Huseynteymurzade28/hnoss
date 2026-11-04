@@ -74,7 +74,7 @@ main :: proc() {
 
 		hnoss.focus(ui, &st)
 		inner := hnoss.box(ui, {area.x, area.y, min(area.width, 40), area.height}, "[b]Files[/]", {focused = true})
-		hnoss.tree(ui, inner, items[:], &st, {scrollbar = true})
+		hnoss.tree(ui, inner, items[:], &st, {scrollbar = true, guides = true})
 		if st.activated && !nodes[st.selected].folder {
 			picked = nodes[st.selected].name
 		}

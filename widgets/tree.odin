@@ -3,6 +3,7 @@ package widgets
 import "../buffer"
 import "../layout"
 import "../pen"
+import "core:strings"
 
 // One node of a tree, in a flat list in depth-first order: a node's
 // children are the items right after it with a greater depth.
@@ -27,12 +28,14 @@ Tree_Options :: struct {
 	indent:    int,  // cells per level (0 means the default, 2)
 	markup:    bool, // item texts are markup instead of plain text
 	scrollbar: bool, // when the rows don't fit
+	guides:    bool, // lines from each branch to its children: │ ├ └
 }
 
 // An expandable tree. The children of a closed branch are skipped. While
 // focused: ↑ ↓ (k j), PgUp PgDn, Home End move; → (l) opens a branch, or
 // goes to its first child when open; ← (h) closes it, or goes to the
-// parent; Space toggles; Enter activates. Clicking a row selects it (and
+// parent; Space toggles; Enter activates. `guides` draws lines from each
+// branch down to its children. Clicking a row selects it (and
 // focuses), clicking a branch's arrow toggles it, the wheel scrolls.
 // Returns true when the selection changed.
 //
@@ -149,17 +152,44 @@ tree :: proc(ui: ^Ui, area: Rect, items: []Tree_Item, state: ^Tree_State, opts :
 		}
 	}
 
+	// Drawn bottom up: `more[d]` is whether a later row at depth d comes
+	// before a shallower one, i.e. the last row's depth-d ancestor (or the
+	// row itself) has a sibling below. Every row after the view counts too.
 	row_style := ui.theme.selected if focused(ui, state) else ui.theme.selected_unfocused
-	for r in state.offset ..< min(state.offset + h, len(rows)) {
+	more := make([dynamic]bool, 0, 16, context.temp_allocator)
+	end := min(state.offset + h, len(rows))
+	for r := (len(rows) - 1 if opts.guides else end - 1); r >= state.offset; r -= 1 {
 		it := items[rows[r]]
+		d := max(it.depth, 0)
+		if opts.guides {
+			resize(&more, min(len(more), d + 1))
+			for len(more) < d + 1 { append(&more, false) }
+		}
+		defer if opts.guides { more[d] = true }
+		if r >= end { continue }
+
 		line := Rect{body.x, body.y + r - state.offset, body.width, 1}
 		if r == row {
 			buffer.fill(ui.buf, line, row_style)
 		}
-		x := min(it.depth * indent, line.width)
-		layout.cut_left(&line, x)
-		p := pen.begin(ui.buf, layout.cut_left(&line, 2), .Clip, base = ui.theme.muted if r != row else {})
-		if it.open != nil { pen.write(&p, "▾" if it.open^ else "▸") }
+		sb := strings.builder_make(context.temp_allocator)
+		if opts.guides && d > 0 {
+			for k in 1 ..< d {
+				strings.write_string(&sb, "│" if more[k] else " ")
+				for _ in 1 ..< indent { strings.write_byte(&sb, ' ') }
+			}
+			strings.write_string(&sb, "├" if more[d] else "└")
+			for _ in 1 ..< indent { strings.write_string(&sb, "─") }
+		} else {
+			for _ in 0 ..< d * indent { strings.write_byte(&sb, ' ') }
+		}
+		switch {
+		case it.open != nil:         strings.write_string(&sb, "▾ " if it.open^ else "▸ ")
+		case opts.guides && d > 0:   strings.write_string(&sb, "─ ")
+		case:                        strings.write_string(&sb, "  ")
+		}
+		p := pen.begin(ui.buf, layout.cut_left(&line, d * indent + 2), .Clip, base = ui.theme.muted if r != row else {})
+		pen.write(&p, strings.to_string(sb))
 		pen.finish(&p)
 		p = pen.begin(ui.buf, line, .Ellipsis, base = ui.theme.text)
 		if opts.markup { pen.markup(&p, it.text) } else { pen.write(&p, it.text) }

@@ -1051,3 +1051,43 @@ widget_tree_empty :: proc(t: ^testing.T) {
 	testing.expect_value(t, st.offset, 0)
 	testing.expect(t, !st.activated)
 }
+
+@(test)
+widget_tree_guides :: proc(t: ^testing.T) {
+	hs := harness(16, 5)
+	fx := Tree_Fixture{src = true, wid = true}
+	items := tree_fixture(&fx)
+	st: widgets.Tree_State
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+	widgets.tree(ui, ui.area, items, &st, {guides = true})
+	expect_screen(t, &hs.buf, `
+		▾ src
+		├─▾ widgets
+		│ └── tree.odin
+		└── main.odin
+		  README.md
+	`)
+	expect_style(t, &hs.buf, ui.theme.selected, `
+		################
+	`)
+
+	// Rows below the view still count: "widgets" has a sibling under it.
+	hs = harness(20, 2)
+	st = {}
+	ui = frame(hs)
+	widgets.tree(ui, ui.area, items, &st, {guides = true})
+	expect_screen(t, &hs.buf, `
+		▾ src
+		├─▾ widgets
+	`)
+
+	// Scrolled: the ancestors' lines come from rows above the view.
+	st = {selected = 2, offset = 2}
+	ui = frame(hs)
+	widgets.tree(ui, ui.area, items, &st, {guides = true, indent = 3})
+	expect_screen(t, &hs.buf, `
+		│  └─── tree.odin
+		└─── main.odin
+	`)
+}
