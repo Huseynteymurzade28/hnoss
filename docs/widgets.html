@@ -30,6 +30,7 @@
 	<h4>Selection</h4>
 	<a href="#list">list</a>
 	<a href="#table">table</a>
+	<a href="#tree">tree</a>
 	<a href="#tabs">tabs</a>
 	<a href="#scrollbar">scrollbar</a>
 	<h4>Data</h4>
@@ -118,6 +119,24 @@ hnoss.scroll_view_end(ui, &amp;view)</code></pre>
     {title = <span class="s">"CPU"</span>,  width = hnoss.percent(10), align = .Right},
 }
 hnoss.table(ui, inner, cols, rows, &amp;state, {scrollbar = <span class="k">true</span>})</code></pre>
+</div>
+
+<h2 id="tree">tree</h2>
+<div class="widget">
+<div class="sig">tree :: proc(ui: ^Ui, area: Rect, items: []Tree_Item, state: ^Tree_State, opts := Tree_Options{}) -&gt; (changed: bool)</div>
+<p>Expandable nodes from a flat list in depth-first order: a <code>Tree_Item</code> is a <code>text</code>, a <code>depth</code> and an <code>open</code> pointer. A branch's <code>open</code> points at a flag you own, usually in your own node type, which the tree flips; leaves leave it <code>nil</code>. The children of a closed branch are skipped, so they can also be left out and loaded when it opens. <code>state.selected</code> is an index into <code>items</code>; when its branch is closed it moves up to the nearest visible ancestor. Returns <code>true</code> when the selection changed.</p>
+<p><code>indent</code> (default 2) sets the cells per level, <code>markup</code> treats texts as markup, <code>scrollbar</code> adds one when the rows don't fit.</p>
+<img src="widgets/tree.svg" alt="tree">
+<p class="keys">Keys (focused): <kbd>↑</kbd> <kbd>↓</kbd> (<kbd>k</kbd> <kbd>j</kbd>) <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd> · <kbd>→</kbd> (<kbd>l</kbd>) opens, or goes to the first child · <kbd>←</kbd> (<kbd>h</kbd>) closes, or goes to the parent · <kbd>Space</kbd> toggles · <kbd>Enter</kbd> sets <code>state.activated</code> · click selects, a click on <code>▸</code> toggles · the wheel scrolls.</p>
+<pre><code>Node :: <span class="k">struct</span> { name: string, depth: int, folder, open: bool }
+
+items := make([]hnoss.Tree_Item, len(nodes), context.temp_allocator)
+<span class="k">for</span> &amp;n, i <span class="k">in</span> nodes {
+    items[i] = {n.name, n.depth, &amp;n.open <span class="k">if</span> n.folder <span class="k">else</span> <span class="k">nil</span>}
+}
+hnoss.tree(ui, inner, items, &amp;state, {scrollbar = <span class="k">true</span>})
+<span class="k">if</span> state.activated { open_file(nodes[state.selected]) }</code></pre>
+<p>Theme: <code>selected</code>, <code>selected_unfocused</code>, <code>muted</code> for the arrows, <code>text</code>.</p>
 </div>
 
 <h2 id="tabs">tabs</h2>

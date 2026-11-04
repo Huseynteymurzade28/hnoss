@@ -41,6 +41,10 @@ table :: widgets.table
 Table_State :: widgets.Table_State
 Table_Options :: widgets.Table_Options
 Column :: widgets.Column
+tree :: widgets.tree
+Tree_Item :: widgets.Tree_Item
+Tree_State :: widgets.Tree_State
+Tree_Options :: widgets.Tree_Options
 gauge :: widgets.gauge
 spinner :: widgets.spinner
 Spinner_Kind :: widgets.Spinner_Kind

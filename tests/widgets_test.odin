@@ -913,3 +913,141 @@ widget_select_opens_above_and_inside_a_modal :: proc(t: ^testing.T) {
 	testing.expect(t, !sel.open)
 	testing.expect(t, dialog)
 }
+
+// The tree of the tree tests: a branch with a nested branch, and leaves.
+@(private = "file")
+Tree_Fixture :: struct {
+	src, wid:     bool,
+	items:        [5]widgets.Tree_Item,
+}
+
+@(private = "file")
+tree_fixture :: proc(f: ^Tree_Fixture) -> []widgets.Tree_Item {
+	f.items = {
+		{"src", 0, &f.src},
+		{"widgets", 1, &f.wid},
+		{"tree.odin", 2, nil},
+		{"main.odin", 1, nil},
+		{"README.md", 0, nil},
+	}
+	return f.items[:]
+}
+
+@(test)
+widget_tree_expand_collapse_and_navigate :: proc(t: ^testing.T) {
+	hs := harness(16, 5)
+	fx: Tree_Fixture
+	items := tree_fixture(&fx)
+	st: widgets.Tree_State
+	ui := frame(hs)
+	widgets.focus(ui, &st)
+	widgets.tree(ui, ui.area, items, &st)
+	expect_screen(t, &hs.buf, `
+		▸ src
+		  README.md
+	`)
+
+	// → opens, → again moves to the first child, → opens that.
+	ui = frame(hs, key(.Right), key(.Right), ch('l'))
+	changed := widgets.tree(ui, ui.area, items, &st)
+	testing.expect(t, changed)
+	testing.expect(t, fx.src && fx.wid)
+	testing.expect_value(t, st.selected, 1)
+	expect_screen(t, &hs.buf, `
+		▾ src
+		  ▾ widgets
+		      tree.odin
+		    main.odin
+		  README.md
+	`)
+	expect_style(t, &hs.buf, ui.theme.selected, `
+
+		################
+	`)
+
+	// ↓ to a leaf; → on a leaf is not ours; ← goes to the parent; ← closes it.
+	ui = frame(hs, key(.Down), key(.Right), key(.Left), key(.Left))
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 1)
+	testing.expect(t, !fx.wid)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+
+	// Space toggles, Enter activates, End goes to the last visible row.
+	ui = frame(hs, ch(' '), key(.End), key(.Enter))
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect(t, fx.wid)
+	testing.expect_value(t, st.selected, 4)
+	testing.expect(t, st.activated)
+
+	// ← on a top-level leaf has nowhere to go.
+	ui = frame(hs, key(.Left))
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+	testing.expect(t, !st.activated)
+}
+
+@(test)
+widget_tree_selection_follows_a_closed_branch :: proc(t: ^testing.T) {
+	hs := harness(16, 5)
+	fx := Tree_Fixture{src = true, wid = true}
+	items := tree_fixture(&fx)
+	st := widgets.Tree_State{selected = 2} // tree.odin
+	ui := frame(hs)
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+
+	fx.src = false // closed by the app: the selection moves up to "src"
+	ui = frame(hs)
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 0)
+
+	st.selected = 99 // out of range: clamped to the last item
+	ui = frame(hs)
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 4)
+}
+
+@(test)
+widget_tree_mouse :: proc(t: ^testing.T) {
+	hs := harness(16, 3)
+	fx := Tree_Fixture{src = true}
+	items := tree_fixture(&fx)
+	st: widgets.Tree_State
+
+	ui := frame(hs, click(5, 1)) // on "widgets", not its arrow
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect(t, widgets.focused(ui, &st))
+	testing.expect_value(t, st.selected, 1)
+	testing.expect(t, !fx.wid)
+
+	ui = frame(hs, click(2, 1)) // its arrow
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect(t, fx.wid)
+	expect_screen(t, &hs.buf, `
+		▾ src
+		  ▾ widgets
+		      tree.odin
+	`)
+
+	ui = frame(hs, wheel(1, 1, true))
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.offset, 2) // 5 rows, 3 visible
+	testing.expect_value(t, st.selected, 1)
+
+	ui = frame(hs, click(0, 0)) // the arrow of "src", scrolled to row 2: "tree.odin" is a leaf
+	widgets.tree(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+	testing.expect(t, fx.src)
+}
+
+@(test)
+widget_tree_empty :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	st := widgets.Tree_State{selected = 3, offset = 2}
+	ui := frame(hs, key(.Down), key(.Enter), key(.Right))
+	widgets.focus(ui, &st)
+	widgets.tree(ui, ui.area, {}, &st)
+	testing.expect_value(t, st.selected, 0)
+	testing.expect_value(t, st.offset, 0)
+	testing.expect(t, !st.activated)
+}
