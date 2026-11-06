@@ -1,10 +1,12 @@
 package hnoss
 
 import "core:mem"
+import "core:os"
 import "backend"
 import "buffer"
 import "input"
 import "layout"
+import "style"
 import "widgets"
 
 Rect :: layout.Rect
@@ -60,6 +62,10 @@ Terminal :: struct {
 	// Option.Kitty_Keyboard). Set after the first poll that sees the reply.
 	kitty_keyboard: bool,
 
+	// What the diff downsamples colors to. init detects it from the
+	// environment (see detect_color_depth); change it with set_color_depth.
+	color_depth:    Color_Depth,
+
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
 }
@@ -77,6 +83,7 @@ Frame :: struct {
 init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Terminal, err: Error) {
 	t.allocator = allocator
 	t.esc_timeout_ms = DEFAULT_ESC_TIMEOUT_MS
+	t.color_depth = detect_color_depth()
 	backend.init(&t.backend, opts, allocator) or_return
 	defer if err != .None { backend.deinit(&t.backend) }
 
@@ -140,7 +147,7 @@ end_frame :: proc(t: ^Terminal) -> Error {
 		buffer.reset(front)
 		t.needs_clear = false
 	}
-	buffer.diff(front, back, &b.out)
+	buffer.diff(front, back, &b.out, t.color_depth)
 	if c := t.frame.cursor; c.visible && layout.rect_contains(back.area, c.x, c.y) {
 		buffer.move_to(&b.out, c.x, c.y)
 		backend.write(b, backend.SHOW_CURSOR)
@@ -155,6 +162,26 @@ end_frame :: proc(t: ^Terminal) -> Error {
 	t.current = 1 - t.current
 	t.frame_count += 1
 	return backend.flush(b)
+}
+
+// Overrides the detected color depth, e.g. from a --color flag. The next
+// frame repaints the whole screen in the new depth.
+set_color_depth :: proc(t: ^Terminal, depth: Color_Depth) {
+	if depth != t.color_depth {
+		t.color_depth = depth
+		t.needs_clear = true
+	}
+}
+
+// The color depth the environment asks for: NO_COLOR, COLORTERM, TERM and
+// TERM_PROGRAM, as style.detect_color_depth reads them.
+detect_color_depth :: proc() -> Color_Depth {
+	return style.detect_color_depth({
+		no_color     = os.get_env("NO_COLOR", context.temp_allocator),
+		colorterm    = os.get_env("COLORTERM", context.temp_allocator),
+		term         = os.get_env("TERM", context.temp_allocator),
+		term_program = os.get_env("TERM_PROGRAM", context.temp_allocator),
+	})
 }
 
 // Forces the next frame to repaint the whole screen (e.g. after something

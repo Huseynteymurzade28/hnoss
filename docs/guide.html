@@ -165,6 +165,8 @@ c1: hnoss.Color = .Bright_Red            <span class="c">// 16 colors (+ .Reset)
 c2: hnoss.Color = hnoss.Indexed(208)     <span class="c">// 256 colors</span>
 c3: hnoss.Color = hnoss.hex(0x22848c)    <span class="c">// truecolor</span>
 c4 := hnoss.gradient(stops, 0.7)          <span class="c">// interpolate []Rgb at t</span></code></pre>
+<p>Draw in any color; the diff turns it into what the terminal can show. <code>init</code> reads the color depth from the environment: <code>COLORTERM=truecolor</code> (or a terminal known to support it) keeps RGB, a <code>*-256color</code> <code>TERM</code> maps RGB to the nearest 256-palette entry, anything else to the nearest of the 16 colors, and <a href="https://no-color.org"><code>NO_COLOR</code></a> drops colors but keeps bold, underline and the other modifiers. To override it, for example from a <code>--color</code> flag:</p>
+<pre><code>hnoss.set_color_depth(&amp;term, .Ansi256)   <span class="c">// .Truecolor, .Ansi256, .Ansi16, .No_Color</span></code></pre>
 
 <h2 id="layout">Layout</h2>
 <p>Layout is plain <code>Rect</code> math: no solver, no allocation. The natural immediate-mode way is to <strong>cut</strong> pieces off the edges:</p>

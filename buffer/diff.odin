@@ -13,10 +13,13 @@ END_SYNC   :: "\x1b[?2026l"
 // Appends to `out` the bytes that turn a screen showing `prev` into one
 // showing `next`. Both buffers must cover the same area.
 //
+// Colors are downsampled to `depth` on the way out (see style.downsample);
+// the buffers themselves keep the colors the frame drew.
+//
 // Assumes the terminal starts with default SGR attributes and leaves it that
 // way: if anything was styled, it ends with a reset. The cursor position is
 // treated as unknown, so the first update always moves explicitly.
-diff :: proc(prev, next: ^Buffer, out: ^[dynamic]u8) {
+diff :: proc(prev, next: ^Buffer, out: ^[dynamic]u8, depth := style.Color_Depth.Truecolor) {
 	assert(prev.area == next.area, "diff: buffers cover different areas")
 
 	pen: Pen // what the terminal's SGR state currently is
@@ -38,7 +41,7 @@ diff :: proc(prev, next: ^Buffer, out: ^[dynamic]u8) {
 				if x != cur_x || y != cur_y {
 					move_to(out, x, y)
 				}
-				update_pen(out, &pen, n)
+				update_pen(out, &pen, n, depth)
 				append(out, ..n.symbol[:n.len])
 				cur_x, cur_y = x + max(int(n.width), 1), y
 			}
@@ -70,8 +73,8 @@ move_to :: proc(out: ^[dynamic]u8, x, y: int) {
 // Emits one SGR sequence covering every attribute that differs between the
 // pen and the cell, then updates the pen.
 @(private)
-update_pen :: proc(out: ^[dynamic]u8, pen: ^Pen, c: ^Cell) {
-	want := Pen{normalize(c.fg), normalize(c.bg), c.modifiers}
+update_pen :: proc(out: ^[dynamic]u8, pen: ^Pen, c: ^Cell, depth: style.Color_Depth) {
+	want := Pen{normalize(style.downsample(c.fg, depth)), normalize(style.downsample(c.bg, depth)), c.modifiers}
 	if want == pen^ {
 		return
 	}

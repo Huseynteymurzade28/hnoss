@@ -17,6 +17,8 @@ Indexed :: style.Indexed
 Named_Color :: style.Named_Color
 Modifier :: style.Modifier
 Modifiers :: style.Modifiers
+Color_Depth :: style.Color_Depth
+downsample :: style.downsample
 
 // Starts writing text into `area` of the frame. Finish with `finish`.
 //
