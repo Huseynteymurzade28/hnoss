@@ -103,6 +103,11 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <pre><code>term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})</code></pre>
 <p>The terminal is restored by <code>deinit</code>, when <code>main</code> returns, and on signals and crashes. For panics, install the provided assertion handler: it restores the terminal <em>before</em> the panic message is printed, so you can read it:</p>
 <pre><code>context.assertion_failure_proc = hnoss.assertion_failure_proc</code></pre>
+<p>A few extras that need no option:</p>
+<pre><code>hnoss.set_title(&amp;term, "hnoss — monitor")   <span class="c">// window title; the old one comes back on exit</span>
+hnoss.set_clipboard(&amp;term, selected)       <span class="c">// OSC 52 copy, works over SSH</span>
+f.cursor = {x, y, true, .Bar, false}       <span class="c">// shape: .Default, .Block, .Underline, .Bar; blink</span></code></pre>
+<p>Text inputs show a bar cursor. The cursor shape is reset on exit.</p>
 <div class="note">Raw mode turns off signal generation, so <kbd>Ctrl</kbd>+<kbd>C</kbd> arrives as a key (<code>hnoss.is_char(ev, 'c', {.Ctrl})</code>) and your app decides what it means. A SIGINT sent from outside still restores the terminal.</div>
 
 <h2 id="events">Events</h2>

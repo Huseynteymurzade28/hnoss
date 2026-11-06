@@ -372,7 +372,7 @@ widget_input_typing_and_editing :: proc(t: ^testing.T) {
 	ui = frame(hs, ..typed("Salam dünya"))
 	testing.expect(t, widgets.input(ui, ui.area, &st))
 	testing.expect_value(t, widgets.input_text(&st), "Salam dünya")
-	testing.expect_value(t, hs.cursor, widgets.Cursor{11, 0, true})
+	testing.expect_value(t, hs.cursor, widgets.Cursor{11, 0, true, .Bar, false})
 	testing.expect_value(t, len(widgets.unhandled(ui)), 0) // all typed keys consumed
 
 	// Four ← from the end land just before "ü" (one step, though two bytes),
@@ -727,7 +727,7 @@ widget_text_area_wraps_and_moves_by_row :: proc(t: ^testing.T) {
 	widgets.text_area(ui, ui.area, &st)
 	// 7 columns of text, the 8th kept for the caret.
 	expect_rows(t, screen_rows(&hs.buf), "bir iki", "üç dörd", "beş", "")
-	testing.expect_value(t, hs.cursor, widgets.Cursor{3, 2, true})
+	testing.expect_value(t, hs.cursor, widgets.Cursor{3, 2, true, .Bar, false})
 
 	// ↑ keeps the column, across rows of different byte lengths.
 	ui = frame(hs, key(.Up))
@@ -762,7 +762,7 @@ widget_text_area_lines_paste_scroll :: proc(t: ^testing.T) {
 	testing.expect_value(t, widgets.input_text(&st), "ab\n1\n2\n3    !\n4\n5")
 	// The caret's row is scrolled into view.
 	expect_rows(t, screen_rows(&hs.buf), "3    !", "4", "5")
-	testing.expect_value(t, hs.cursor, widgets.Cursor{1, 2, true})
+	testing.expect_value(t, hs.cursor, widgets.Cursor{1, 2, true, .Bar, false})
 
 	ui = frame(hs, key(.Home, {.Ctrl}))
 	widgets.text_area(ui, ui.area, &st, {scrollbar = true})

@@ -6,6 +6,8 @@ Ui :: widgets.Ui
 Theme :: widgets.Theme
 Border :: widgets.Border
 DEFAULT_THEME :: widgets.DEFAULT_THEME
+Cursor :: widgets.Cursor
+Cursor_Shape :: widgets.Cursor_Shape
 
 // Starts this frame's widgets. `events` are the ones poll_events returned.
 //

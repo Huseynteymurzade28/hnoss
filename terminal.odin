@@ -1,7 +1,9 @@
 package hnoss
 
+import "core:encoding/base64"
 import "core:mem"
 import "core:os"
+import "core:unicode/utf8"
 import "backend"
 import "buffer"
 import "input"
@@ -68,6 +70,7 @@ Terminal :: struct {
 
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
+	cursor_shape:   [2]u8, // shape and blink last sent with DECSCUSR; {0, 0} = the terminal default
 }
 
 // What a frame's draw code works with. Valid between begin_frame and end_frame.
@@ -150,6 +153,11 @@ end_frame :: proc(t: ^Terminal) -> Error {
 	buffer.diff(front, back, &b.out, t.color_depth)
 	if c := t.frame.cursor; c.visible && layout.rect_contains(back.area, c.x, c.y) {
 		buffer.move_to(&b.out, c.x, c.y)
+		shape := [2]u8{u8(c.shape), u8(c.blink)}
+		if shape != t.cursor_shape {
+			append_cursor_shape(&b.out, c.shape, c.blink)
+			t.cursor_shape = shape
+		}
 		backend.write(b, backend.SHOW_CURSOR)
 		t.cursor_shown = true
 	} else if t.cursor_shown {
@@ -162,6 +170,43 @@ end_frame :: proc(t: ^Terminal) -> Error {
 	t.current = 1 - t.current
 	t.frame_count += 1
 	return backend.flush(b)
+}
+
+// Appends DECSCUSR: CSI n SP q, n = 1/2 block, 3/4 underline, 5/6 bar
+// (odd ones blink), 0 the terminal's default.
+append_cursor_shape :: proc(out: ^[dynamic]u8, shape: widgets.Cursor_Shape, blink: bool) {
+	n := 0
+	if shape != .Default {
+		n = 2 * int(shape) - (1 if blink else 0)
+	}
+	append(out, "\x1b[")
+	append(out, u8('0' + n))
+	append(out, " q")
+}
+
+// Copies `text` to the system clipboard with OSC 52. It works over SSH too,
+// as the terminal does the copying; terminals that don't support it (or
+// have it turned off) ignore it. Sent with the next end_frame.
+set_clipboard :: proc(t: ^Terminal, text: string) {
+	encoded := base64.encode(transmute([]u8)text, allocator = context.temp_allocator)
+	backend.write(&t.backend, "\x1b]52;c;")
+	backend.write(&t.backend, encoded)
+	backend.write(&t.backend, "\x07")
+}
+
+// Sets the window title (OSC 2). The original title comes back on deinit
+// (on terminals with a title stack, XTWINOPS 22/23). Control characters
+// are dropped so the title can't end the sequence early. Sent with the
+// next end_frame.
+set_title :: proc(t: ^Terminal, title: string) {
+	backend.write(&t.backend, "\x1b]2;")
+	for r in title {
+		if r >= ' ' && r != 0x7f && !(r >= 0x80 && r < 0xa0) {
+			buf, n := utf8.encode_rune(r)
+			backend.write(&t.backend, string(buf[:n]))
+		}
+	}
+	backend.write(&t.backend, "\x07")
 }
 
 // Overrides the detected color depth, e.g. from a --color flag. The next

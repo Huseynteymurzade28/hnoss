@@ -94,7 +94,7 @@ input :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Input_Options{})
 	}
 
 	if x := area.x + caret - state.scroll; focused(ui, state) && layout.rect_contains(ui.buf.clip, x, area.y) {
-		ui.cursor^ = {x, area.y, true}
+		ui.cursor^ = {x, area.y, true, .Bar, false}
 	}
 	return changed
 }

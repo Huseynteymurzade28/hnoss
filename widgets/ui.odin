@@ -56,6 +56,16 @@ Memory :: struct {
 Cursor :: struct {
 	x, y:    int,
 	visible: bool,
+	shape:   Cursor_Shape,
+	blink:   bool,
+}
+
+// .Default leaves the shape the user configured in their terminal.
+Cursor_Shape :: enum u8 {
+	Default,
+	Block,
+	Underline,
+	Bar,
 }
 
 begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: ^Cursor, theme := DEFAULT_THEME) -> ^Ui {

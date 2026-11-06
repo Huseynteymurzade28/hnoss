@@ -81,6 +81,12 @@ ENABLE_KITTY_KEYBOARD  :: "\x1b[>1u\x1b[?u"
 DISABLE_KITTY_KEYBOARD :: "\x1b[<u"
 ENABLE_FOCUS_EVENTS  :: "\x1b[?1004h"
 DISABLE_FOCUS_EVENTS :: "\x1b[?1004l"
+// DECSCUSR 0: the cursor shape the user configured.
+RESET_CURSOR_SHAPE :: "\x1b[0 q"
+// XTWINOPS 22/23: save the window title on the terminal's title stack at
+// init and put it back on exit, so set_title doesn't outlive the app.
+PUSH_TITLE :: "\x1b[22;0t"
+POP_TITLE  :: "\x1b[23;0t"
 ENABLE_MOUSE  :: "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h"
 DISABLE_MOUSE :: "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l"
 

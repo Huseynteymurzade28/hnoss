@@ -116,7 +116,7 @@ text_area :: proc(ui: ^Ui, area: Rect, state: ^Input_State, opts := Text_Area_Op
 	cx := body.x + min(text.width(s[rows[caret_row].start:state.cursor]), body.width - 1)
 	cy := body.y + caret_row - state.scroll
 	if focused(ui, state) && caret_row >= state.scroll && caret_row < state.scroll + h && layout.rect_contains(ui.buf.clip, cx, cy) {
-		ui.cursor^ = {cx, cy, true}
+		ui.cursor^ = {cx, cy, true, .Bar, false}
 	}
 	return changed
 }
