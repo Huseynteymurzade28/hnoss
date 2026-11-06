@@ -38,6 +38,7 @@ Theme :: struct {
 	modal:              Style, // the inside of a modal (its border is border_focused)
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
+	key:                Style, // a key in key_hints / key_help
 }
 
 DEFAULT_THEME :: Theme {
@@ -68,4 +69,5 @@ DEFAULT_THEME :: Theme {
 	modal              = {},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
+	key                = {fg = .Cyan, add = {.Bold}},
 }

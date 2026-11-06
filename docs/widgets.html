@@ -46,6 +46,8 @@
 	<a href="#select">select</a>
 	<h4>Overlays</h4>
 	<a href="#modal">modal</a>
+	<h4>Help</h4>
+	<a href="#key_hints">key_hints · key_help</a>
 </aside>
 
 <main class="doc">
@@ -290,6 +292,20 @@ hnoss.focus_order(ui, {&amp;save, &amp;cancel})
     <span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Delete"</span>, &amp;ok)     { remove(); confirm = <span class="k">false</span> }
 }</code></pre>
 <p>Theme: <code>modal</code> for the inside; the border uses <code>border_focused</code>.</p>
+</div>
+
+<h2 id="key_hints">key_hints · key_help</h2>
+<div class="widget">
+<div class="sig">key_hints :: proc(ui: ^Ui, area: Rect, hints: []Key_Hint, separator := " · ")</div>
+<div class="sig">key_help :: proc(ui: ^Ui, area: Rect, hints: []Key_Hint)</div>
+<p>A <code>Key_Hint</code> is a <code>key</code> and what it does (<code>desc</code>). <code>key_hints</code> draws the one-line bar at the bottom of a screen; when the hints don't all fit, they are dropped from the end and <code>…</code> shows that some are missing, so put the important ones first. <code>key_help</code> lists them one per row with the keys right-aligned, for a help modal; a hint with an empty key is a section heading.</p>
+<img src="widgets/key_hints.svg" alt="key hints and help">
+<pre><code>hnoss.key_hints(ui, footer, {{<span class="s">"q"</span>, <span class="s">"quit"</span>}, {<span class="s">"/"</span>, <span class="s">"search"</span>}, {<span class="s">"?"</span>, <span class="s">"help"</span>}})
+<span class="k">if</span> help {
+    d := hnoss.modal(ui, hnoss.center(f.area, 36, len(keys) + 2), &amp;help, <span class="s">"Keys"</span>)
+    hnoss.key_help(ui, d, keys)
+}</code></pre>
+<p>Theme: <code>key</code> for the keys; descriptions and separators use <code>muted</code>, headings <code>title</code>.</p>
 </div>
 </main>
 </div>

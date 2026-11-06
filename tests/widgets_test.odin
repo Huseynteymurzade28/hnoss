@@ -1109,3 +1109,46 @@ widget_tree_guides :: proc(t: ^testing.T) {
 		└─── main.odin
 	`)
 }
+
+@(test)
+key_hints_drop_from_the_end :: proc(t: ^testing.T) {
+	hints := []widgets.Key_Hint{{"q", "quit"}, {"/", "search"}, {"?", "help"}}
+
+	hs := harness(30, 1)
+	ui := frame(hs)
+	widgets.key_hints(ui, ui.area, hints)
+	expect_screen(t, &hs.buf, `
+		q quit · / search · ? help
+	`)
+	expect_style(t, &hs.buf, ui.theme.key, `
+		q        /          ?
+	`)
+
+	// "q quit · / search · ? help" is 26 cells; at 25 the last one goes.
+	hs = harness(25, 1)
+	ui = frame(hs)
+	widgets.key_hints(ui, ui.area, hints)
+	expect_screen(t, &hs.buf, `
+		q quit · / search …
+	`)
+
+	hs = harness(4, 1)
+	ui = frame(hs)
+	widgets.key_hints(ui, ui.area, hints)
+	expect_screen(t, &hs.buf, `
+		…
+	`)
+}
+
+@(test)
+key_help_aligns_keys :: proc(t: ^testing.T) {
+	hints := []widgets.Key_Hint{{"", "Moving"}, {"↑↓", "select"}, {"Ctrl+S", "save"}, {"q", "quit"}}
+	hs := harness(16, 3)
+	ui := frame(hs)
+	widgets.key_help(ui, ui.area, hints)
+	expect_screen(t, &hs.buf, `
+		Moving
+		    ↑↓  select
+		Ctrl+S  save
+	`)
+}

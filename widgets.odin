@@ -25,6 +25,9 @@ focus_order :: widgets.focus_order
 unhandled :: widgets.unhandled
 
 box :: widgets.box
+key_hints :: widgets.key_hints
+key_help :: widgets.key_help
+Key_Hint :: widgets.Key_Hint
 Box_Options :: widgets.Box_Options
 label :: widgets.label
 paragraph :: widgets.paragraph
