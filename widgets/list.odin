@@ -8,7 +8,7 @@ import "../text"
 List_State :: struct {
 	selected:  int,  // index of the selected item
 	offset:    int,  // first visible item
-	activated: bool, // Enter was pressed on the selection this frame
+	activated: bool, // Enter was pressed, or the selection double-clicked, this frame
 }
 
 List_Options :: struct {
@@ -18,7 +18,7 @@ List_Options :: struct {
 }
 
 // A scrollable, selectable list. While focused: ↑ ↓ (or k j), PgUp PgDn,
-// Home End move, Enter activates. Clicking selects (and focuses), the wheel
+// Home End move, Enter or a double click activates. Clicking selects (and focuses), the wheel
 // scrolls. Returns true when the selection changed.
 list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := List_Options{}) -> (changed: bool) {
 	state.activated = false
@@ -119,6 +119,7 @@ select_rows :: proc(ui: ^Ui, state: ^List_State, rows: Rect, header, n: int) {
 			if m.button == .Left && m.y >= rows.y {
 				if idx := state.offset + m.y - rows.y; idx < n {
 					state.selected = idx
+					state.activated ||= m.clicks == 2
 				}
 			}
 			consume(ui, i)

@@ -21,7 +21,7 @@ Tree_Item :: struct {
 Tree_State :: struct {
 	selected:  int,  // index into the items (always a visible one)
 	offset:    int,  // first visible row
-	activated: bool, // Enter was pressed on the selection this frame
+	activated: bool, // Enter was pressed, or the selection double-clicked, this frame
 }
 
 Tree_Options :: struct {
@@ -34,7 +34,7 @@ Tree_Options :: struct {
 // An expandable tree. The children of a closed branch are skipped. While
 // focused: ↑ ↓ (k j), PgUp PgDn, Home End move; → (l) opens a branch, or
 // goes to its first child when open; ← (h) closes it, or goes to the
-// parent; Space toggles; Enter activates. `guides` draws lines from each
+// parent; Space toggles; Enter or a double click activates. `guides` draws lines from each
 // branch down to its children. Clicking a row selects it (and
 // focuses), clicking a branch's arrow toggles it, the wheel scrolls.
 // Returns true when the selection changed.
@@ -137,6 +137,8 @@ tree :: proc(ui: ^Ui, area: Rect, items: []Tree_Item, state: ^Tree_State, opts :
 					arrow := body.x + it.depth * indent
 					if it.open != nil && m.x >= arrow && m.x < arrow + 2 {
 						toggle(items, &rows, it)
+					} else if m.clicks == 2 {
+						state.activated = true
 					}
 					row = tree_settle(items, rows[:], state, h)
 				}

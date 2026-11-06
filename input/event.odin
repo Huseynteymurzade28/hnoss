@@ -66,6 +66,10 @@ Mouse :: struct {
 	button: Mouse_Button,
 	x, y:   int,
 	mods:   Key_Modifiers,
+	// On a Press and its Release: 1 for a single click, 2 for a double,
+	// 3 for a triple (then back to 1). 0 on every other kind. Counted by
+	// a Click_Tracker; the parser alone always leaves it 0.
+	clicks: u8,
 }
 
 // Text from a bracketed paste, delivered as one event instead of a stream

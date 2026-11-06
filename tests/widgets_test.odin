@@ -201,6 +201,24 @@ widget_list_keys_scroll_and_activate :: proc(t: ^testing.T) {
 }
 
 @(test)
+list_double_click_activates :: proc(t: ^testing.T) {
+	hs := harness(10, 3)
+	items := []string{"alpha", "beta", "gamma"}
+	st: widgets.List_State
+
+	ui := frame(hs, click(0, 1))
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 1)
+	testing.expect(t, !st.activated)
+
+	double := input.Mouse{kind = .Press, button = .Left, x = 0, y = 2, clicks = 2}
+	ui = frame(hs, double)
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+	testing.expect(t, st.activated)
+}
+
+@(test)
 widget_list_mouse :: proc(t: ^testing.T) {
 	hs := harness(10, 3)
 	items := []string{"a", "b", "c", "d", "e", "f"}

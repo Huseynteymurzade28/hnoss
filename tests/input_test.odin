@@ -1,6 +1,7 @@
 package tests
 
 import "core:testing"
+import "core:time"
 import "../input"
 
 // Feeds `bytes` in one go, then flushes, and returns the events.
@@ -219,4 +220,39 @@ input_kitty_capability_reply :: proc(t: ^testing.T) {
 	input.feed(&p, transmute([]u8)string("\x1b[?1u"), &events)
 	testing.expect_value(t, p.keyboard_flags, 1)
 	testing.expect_value(t, len(events), 0) // the reply is not an event
+}
+
+@(test)
+click_tracker_counts_double_and_triple :: proc(t: ^testing.T) {
+	tr: input.Click_Tracker
+	ms :: proc(n: int) -> time.Tick { return time.Tick{i64(n) * i64(time.Millisecond)} }
+	press :: proc(tr: ^input.Click_Tracker, x, y: int, at: time.Tick, button := input.Mouse_Button.Left) -> u8 {
+		m := input.Mouse{kind = .Press, button = button, x = x, y = y}
+		input.track_click(tr, &m, at)
+		return m.clicks
+	}
+	testing.expect_value(t, press(&tr, 3, 1, ms(1000)), 1)
+	rel := input.Mouse{kind = .Release, button = .Left, x = 3, y = 1}
+	input.track_click(&tr, &rel, ms(1050))
+	testing.expect_value(t, rel.clicks, 1)
+	testing.expect_value(t, press(&tr, 3, 1, ms(1200)), 2)
+	testing.expect_value(t, press(&tr, 3, 1, ms(1500)), 3)
+	testing.expect_value(t, press(&tr, 3, 1, ms(1600)), 1) // a fourth starts over
+	// Too slow, another cell, or another button: a single click again.
+	testing.expect_value(t, press(&tr, 3, 1, ms(2100)), 1)
+	testing.expect_value(t, press(&tr, 4, 1, ms(2200)), 1)
+	testing.expect_value(t, press(&tr, 4, 1, ms(2300), .Right), 1)
+	// A drag in between breaks the run.
+	drag := input.Mouse{kind = .Drag, button = .Right, x = 4, y = 1}
+	input.track_click(&tr, &drag, ms(2350))
+	testing.expect_value(t, drag.clicks, 0)
+	testing.expect_value(t, press(&tr, 4, 1, ms(2400), .Right), 1)
+	// The wheel is never counted.
+	wh := input.Mouse{kind = .Press, button = .Wheel_Up}
+	input.track_click(&tr, &wh, ms(2450))
+	testing.expect_value(t, wh.clicks, 0)
+	// A custom interval.
+	tr.interval = 100 * time.Millisecond
+	testing.expect_value(t, press(&tr, 0, 0, ms(3000)), 1)
+	testing.expect_value(t, press(&tr, 0, 0, ms(3150)), 1)
 }

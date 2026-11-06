@@ -3,6 +3,7 @@ package hnoss
 import "core:encoding/base64"
 import "core:mem"
 import "core:os"
+import "core:time"
 import "core:unicode/utf8"
 import "backend"
 import "buffer"
@@ -63,6 +64,10 @@ Terminal :: struct {
 	// The terminal confirmed the kitty keyboard protocol (see
 	// Option.Kitty_Keyboard). Set after the first poll that sees the reply.
 	kitty_keyboard: bool,
+
+	// Counts double / triple clicks into Mouse.clicks. Set
+	// `clicks.interval` to change how fast they must be (default 400 ms).
+	clicks:         input.Click_Tracker,
 
 	// What the diff downsamples colors to. init detects it from the
 	// environment (see detect_color_depth); change it with set_color_depth.
@@ -262,7 +267,14 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 			}
 		}
 		if res.n > 0 {
+			first := len(events)
 			input.feed(&t.parser, t.read_buf[:res.n], &events, allocator)
+			now := time.tick_now()
+			for &ev in events[first:] {
+				if m, ok := &ev.(Mouse); ok {
+					input.track_click(&t.clicks, m, now)
+				}
+			}
 			t.kitty_keyboard = t.parser.keyboard_flags > 0
 		}
 

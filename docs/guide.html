@@ -115,7 +115,7 @@ f.cursor = {x, y, true, .Bar, false}       <span class="c">// shape: .Default, .
 <table class="ref">
 <tr><th>Event</th><th>Fields</th></tr>
 <tr><td><code>Key</code></td><td><code>code</code> (<code>.Char</code>, <code>.Enter</code>, <code>.Up</code>, <code>.F5</code>, …), <code>char</code> (for <code>.Char</code>), <code>mods</code> (<code>.Shift .Alt .Ctrl .Super</code>)</td></tr>
-<tr><td><code>Mouse</code></td><td><code>kind</code> (<code>.Press .Release .Drag .Move .Scroll</code>), <code>button</code>, <code>x</code>, <code>y</code>, <code>mods</code></td></tr>
+<tr><td><code>Mouse</code></td><td><code>kind</code> (<code>.Press .Release .Drag .Move .Scroll</code>), <code>button</code>, <code>x</code>, <code>y</code>, <code>mods</code>, <code>clicks</code> (2 = double, 3 = triple click; <code>term.clicks.interval</code> sets the timing, default 400 ms)</td></tr>
 <tr><td><code>Paste</code></td><td><code>text</code>, the whole pasted string</td></tr>
 <tr><td><code>Resize</code></td><td><code>cols</code>, <code>rows</code> (frames resize themselves; this is informational)</td></tr>
 <tr><td><code>Focus</code></td><td><code>gained</code>: the window got focus (<code>true</code>) or lost it; only with <code>.Focus_Events</code></td></tr>
