@@ -19,13 +19,16 @@ class Screen:
         if not hasattr(s, "dec"): s.dec = codecs.getincrementaldecoder("utf-8")("replace"); s.tail = ""
         t = s.tail + s.dec.decode(data); s.tail = ""
         cut = t.rfind("\x1b")
-        if cut >= 0 and not re.match(r"\x1b\[[?<]?[0-9;]*[@-~]", t[cut:]) and len(t) - cut < 32:
+        if cut >= 0 and not re.match(r"\x1b\[[?<>=]?[0-9;]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)", t[cut:]) and len(t) - cut < 32:
             t, s.tail = t[:cut], t[cut:]  # an escape sequence split across reads
         i = 0
         while i<len(t):
             ch=t[i]
+            if ch=="\x1b" and i+1<len(t) and t[i+1]=="]":
+                m=re.match(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)",t[i:])
+                i+=m.end() if m else 1; continue
             if ch=="\x1b" and i+1<len(t) and t[i+1]=="[":
-                m=re.match(r"\x1b\[([?<]?)([0-9;]*)([@-~])",t[i:])
+                m=re.match(r"\x1b\[([?<>=]?)([0-9;]*)(?:[ -/]*)([@-~])",t[i:])
                 if not m: i+=1; continue
                 p,args,f=m.groups(); i+=m.end()
                 if f=="H" and not p:
