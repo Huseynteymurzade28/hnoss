@@ -42,6 +42,8 @@ View_State :: widgets.View_State
 list :: widgets.list
 List_State :: widgets.List_State
 List_Options :: widgets.List_Options
+list_query :: widgets.list_query
+list_set_query :: widgets.list_set_query
 table :: widgets.table
 Table_State :: widgets.Table_State
 Table_Options :: widgets.Table_Options

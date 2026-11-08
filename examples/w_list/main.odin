@@ -1,5 +1,6 @@
-// Widget example: list. ↑↓/jk select, Enter activates, click, wheel.
-//   q / Esc  quit (unless a widget uses the key)
+// Widget example: list. ↑↓ select, Enter activates, click, wheel; typing
+// filters the cities (Backspace edits, Esc clears).
+//   Esc  quit (once the filter is empty) · Ctrl+C  quit
 package main
 
 import "core:fmt"
@@ -26,18 +27,18 @@ main :: proc() {
 		ui := hnoss.ui(f, events)
 		area := hnoss.inset(f.area, 1)
 		footer := hnoss.cut_bottom(&area, 1)
-		hnoss.label(ui, footer, "[dim]↑↓ jk PgUp PgDn · Enter · click · wheel · q quit[/]")
+		hnoss.label(ui, footer, "[dim]type to filter · ↑↓ PgUp PgDn · Enter · click · wheel · Esc quit[/]")
 		hnoss.focus(ui, &st)
 		cols := hnoss.split(area, .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 1)
 		inner := hnoss.box(ui, cols[0], "🇦🇿 [b]Cities[/]", {focused = true})
-		hnoss.list(ui, inner, items[:], &st, {scrollbar = true})
+		hnoss.list(ui, inner, items[:], &st, {scrollbar = true, filter = true})
 		if st.activated {
 			picked = items[st.selected]
 		}
 		info := hnoss.box(ui, cols[1], "selection")
-		hnoss.label(ui, info, fmt.tprintf("selected: [b]%s[/] (%d)\nactivated: [b green]%s[/]", items[st.selected], st.selected, picked))
+		hnoss.label(ui, info, fmt.tprintf("selected: [b]%s[/] (%d)\nactivated: [b green]%s[/]\nquery: [b]%s[/]", items[st.selected], st.selected, picked, hnoss.list_query(&st)))
 		for ev in hnoss.unhandled(ui) {
-			if hnoss.is_char(ev, 'q') || hnoss.is_key(ev, .Esc) || hnoss.is_char(ev, 'c', {.Ctrl}) {
+			if hnoss.is_key(ev, .Esc) || hnoss.is_char(ev, 'c', {.Ctrl}) {
 				break loop
 			}
 		}

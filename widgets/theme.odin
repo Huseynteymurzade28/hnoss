@@ -39,6 +39,7 @@ Theme :: struct {
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
 	key:                Style, // a key in key_hints / key_help
+	match:              Style, // the characters a filtered list matched
 }
 
 DEFAULT_THEME :: Theme {
@@ -70,4 +71,5 @@ DEFAULT_THEME :: Theme {
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
 	key                = {fg = .Cyan, add = {.Bold}},
+	match              = {add = {.Bold, .Underlined}},
 }

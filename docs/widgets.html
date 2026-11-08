@@ -102,11 +102,14 @@ hnoss.scroll_view_end(ui, &amp;view)</code></pre>
 <div class="sig">list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := List_Options{}) -&gt; (changed: bool)</div>
 <p>A selectable, scrolling list. Returns <code>true</code> when the selection changed; <code>state.activated</code> is set for the frame <kbd>Enter</kbd> is pressed.</p>
 <img src="gallery/list.svg" alt="list">
-<p class="keys">Keys (focused): <kbd>↑</kbd><kbd>↓</kbd> or <kbd>k</kbd><kbd>j</kbd>, <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd>, <kbd>Enter</kbd> · click selects, wheel scrolls the view.</p>
+<p class="keys">Keys (focused): <kbd>↑</kbd><kbd>↓</kbd> or <kbd>k</kbd><kbd>j</kbd>, <kbd>PgUp</kbd> <kbd>PgDn</kbd> <kbd>Home</kbd> <kbd>End</kbd>, <kbd>Enter</kbd> or a double click · click selects, wheel scrolls the view.</p>
+<p>With <code>filter = true</code>, typing narrows the list: printable keys and paste build a query (so <kbd>j</kbd> and <kbd>k</kbd> type too), <kbd>Backspace</kbd> and <kbd>Ctrl</kbd>+<kbd>U</kbd> edit it, <kbd>Esc</kbd> clears it. On an empty query <kbd>Esc</kbd> and <kbd>Backspace</kbd> are left to the app. An item matches when it contains the query, or its characters in order, ignoring case; the matched characters are drawn in <code>theme.match</code> and the query with a match count on the bottom row. <code>state.selected</code> stays an index into <code>items</code>, so <code>items[state.selected]</code> is always the item on screen; when the query hides it, it moves to the next match. Read or set the query with <code>list_query</code> / <code>list_set_query</code>.</p>
+<img src="widgets/list_filter.svg" alt="list with a filter">
+<pre><code>hnoss.list(ui, inner, cities, &amp;st, {filter = true})</code></pre>
 <table class="ref">
 <tr><th>Field</th><th></th></tr>
-<tr><td><code>List_State</code></td><td><code>selected</code>, <code>offset</code> (first visible), <code>activated</code></td></tr>
-<tr><td><code>List_Options</code></td><td><code>marker</code> (default <code>"› "</code>), <code>markup</code> (items are markup), <code>scrollbar</code></td></tr>
+<tr><td><code>List_State</code></td><td><code>selected</code>, <code>offset</code> (first visible row), <code>activated</code>, the query (<code>list_query</code>)</td></tr>
+<tr><td><code>List_Options</code></td><td><code>marker</code> (default <code>"› "</code>), <code>markup</code> (items are markup), <code>scrollbar</code>, <code>filter</code> (type to filter; markup items are matched as written)</td></tr>
 </table>
 </div>
 

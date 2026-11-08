@@ -292,6 +292,111 @@ widget_table_events_in_one_frame :: proc(t: ^testing.T) {
 }
 
 @(test)
+list_filter_typing_narrows_and_keeps_original_index :: proc(t: ^testing.T) {
+	hs := harness(16, 4)
+	items := []string{"Bakı", "Gəncə", "Şəki", "Quba", "Qəbələ", "Sumqayıt"}
+	st: widgets.List_State
+	opts := widgets.List_Options{filter = true}
+	run :: proc(hs: ^Harness, items: []string, st: ^widgets.List_State, opts: widgets.List_Options, events: ..input.Event) -> ^widgets.Ui {
+		ui := frame(hs, ..events)
+		widgets.focus(ui, st)
+		widgets.list(ui, ui.area, items, st, opts)
+		return ui
+	}
+
+	// j and k type; "b" matches Bakı, Quba, Qəbələ (case-insensitive substring)
+	run(hs, items, &st, opts, ch('B'))
+	testing.expect_value(t, widgets.list_query(&st), "B")
+	testing.expect_value(t, st.selected, 0)
+	expect_screen(t, &hs.buf, `
+		› Bakı
+		  Quba
+		  Qəbələ
+		/ B          3/6
+	`)
+	expect_style(t, &hs.buf, {add = {.Underlined}}, `
+		  #
+		    #
+		    #
+	`)
+
+	run(hs, items, &st, opts, key(.Down), key(.Down))
+	testing.expect_value(t, st.selected, 4) // Qəbələ, an index into items
+
+	// only Qəbələ has "bə": the selection was on it and stays
+	run(hs, items, &st, opts, ch('ə'))
+	testing.expect_value(t, st.selected, 4)
+	expect_screen(t, &hs.buf, `
+		› Qəbələ
+
+
+		/ Bə         1/6
+	`)
+
+	// "sq" is no substring but s…q in order matches Sumqayıt; the hidden
+	// selection moves to it, the next match
+	run(hs, items, &st, opts, key(.Backspace), key(.Backspace), ch('s'), ch('q'))
+	testing.expect_value(t, widgets.list_query(&st), "sq")
+	testing.expect_value(t, st.selected, 5)
+	expect_style(t, &hs.buf, {add = {.Underlined}}, `
+		  #  #
+	`)
+
+	// nothing matches: Enter does not activate, the selection is kept
+	ui := run(hs, items, &st, opts, ch('z'), key(.Enter), key(.Down))
+	testing.expect(t, !st.activated)
+	testing.expect_value(t, st.selected, 5)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+	expect_screen(t, &hs.buf, `
+		no matches
+
+
+		/ sqz        0/6
+	`)
+
+	// Esc clears; on an empty query Esc and Backspace are the app's
+	ui = run(hs, items, &st, opts, key(.Esc))
+	testing.expect_value(t, widgets.list_query(&st), "")
+	testing.expect_value(t, st.selected, 5)
+	testing.expect_value(t, st.offset, 2) // brought into view
+	ui = run(hs, items, &st, opts, key(.Esc), key(.Backspace))
+	testing.expect_value(t, len(widgets.unhandled(ui)), 2)
+
+	// paste appends (one line), Ctrl+U clears
+	run(hs, items, &st, opts, input.Paste{text = "gə\n"})
+	testing.expect_value(t, widgets.list_query(&st), "gə ")
+	run(hs, items, &st, opts, ch('u', {.Ctrl}))
+	testing.expect_value(t, widgets.list_query(&st), "")
+}
+
+@(test)
+list_filter_mouse_maps_to_items :: proc(t: ^testing.T) {
+	hs := harness(16, 4)
+	items := []string{"alpha", "beta", "gamma", "delta"}
+	st: widgets.List_State
+	widgets.list_set_query(&st, "ta")
+	ui := frame(hs, click(3, 1))
+	widgets.list(ui, ui.area, items, &st, {filter = true})
+	testing.expect_value(t, st.selected, 3) // row 1 of beta, delta
+	testing.expect(t, widgets.focused(ui, &st))
+
+	// without `filter` the query is ignored and j/k move
+	ui = frame(hs, ch('k'))
+	widgets.list(ui, ui.area, items, &st)
+	testing.expect_value(t, st.selected, 2)
+}
+
+@(test)
+list_set_query_cuts_at_a_character :: proc(t: ^testing.T) {
+	st: widgets.List_State
+	long := "ççççççççççççççççççççççççççççççççççç" // 35 × 2 bytes
+	widgets.list_set_query(&st, long)
+	testing.expect_value(t, len(widgets.list_query(&st)), 64)
+	widgets.list_set_query(&st, "")
+	testing.expect_value(t, widgets.list_query(&st), "")
+}
+
+@(test)
 widget_list_empty :: proc(t: ^testing.T) {
 	hs := harness(10, 3)
 	st: widgets.List_State
