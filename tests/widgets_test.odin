@@ -1257,3 +1257,199 @@ key_help_aligns_keys :: proc(t: ^testing.T) {
 		Ctrl+S  save
 	`)
 }
+
+@(test)
+widget_log_view_follows_the_tail :: proc(t: ^testing.T) {
+	hs := harness(20, 3)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "1\n2\n3\n")
+	widgets.log_appendf(&st, "%d", 4)
+	widgets.log_append(&st, "5\r\n")
+	testing.expect_value(t, widgets.log_len(&st), 5)
+
+	ui := frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "3", "4", "5")
+
+	widgets.log_append(&st, "6")
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "4", "5", "6")
+}
+
+@(test)
+widget_log_view_drops_the_oldest_lines :: proc(t: ^testing.T) {
+	st := widgets.Log_State{max_lines = 3}
+	defer widgets.log_destroy(&st)
+	for i in 1 ..= 7 {
+		widgets.log_appendf(&st, "line %d", i)
+	}
+	testing.expect_value(t, widgets.log_len(&st), 3)
+	testing.expect_value(t, widgets.log_line(&st, 0), "line 5")
+	testing.expect_value(t, widgets.log_line(&st, 2), "line 7")
+
+	widgets.log_clear(&st)
+	testing.expect_value(t, widgets.log_len(&st), 0)
+	widgets.log_append(&st, "again")
+	testing.expect_value(t, widgets.log_line(&st, 0), "again")
+}
+
+@(test)
+widget_log_view_scrolling_up_holds_the_view :: proc(t: ^testing.T) {
+	hs := harness(20, 3)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "1\n2\n3\n4\n5")
+
+	// Not following once scrolled up; new lines don't move the view and
+	// are counted in the note on the bottom row.
+	widgets.focus(frame(hs), &st)
+	ui := frame(hs, key(.Up))
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, st.paused)
+	expect_rows(t, screen_rows(&hs.buf), "2", "3", "4")
+
+	widgets.log_append(&st, "6\n7")
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_screen(t, &hs.buf, `
+		2
+		3
+		4     ↓ 2 new lines
+	`)
+
+	// End follows again.
+	ui = frame(hs, key(.End))
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, !st.paused)
+	testing.expect_value(t, st.unseen, 0)
+	expect_rows(t, screen_rows(&hs.buf), "5", "6", "7")
+
+	// k / Home / the wheel scroll up, j and wheel back to the bottom follow.
+	ui = frame(hs, ch('g'))
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "1", "2", "3")
+	ui = frame(hs, ch('j'), wheel(0, 0, true))
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, !st.paused)
+	expect_rows(t, screen_rows(&hs.buf), "5", "6", "7")
+	ui = frame(hs, wheel(0, 0, false))
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "2", "3", "4")
+
+	// A click on the note follows too.
+	widgets.log_append(&st, "8")
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "2", "3", "4      ↓ 1 new line")
+	ui = frame(hs, click(15, 2))
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "6", "7", "8")
+}
+
+@(test)
+widget_log_view_cannot_pause_when_everything_fits :: proc(t: ^testing.T) {
+	hs := harness(10, 4)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "a\nb")
+	widgets.focus(frame(hs), &st)
+	ui := frame(hs, key(.Up), key(.Page_Up))
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, !st.paused)
+	expect_rows(t, screen_rows(&hs.buf), "a", "b")
+}
+
+@(test)
+widget_log_view_wraps_by_rows :: proc(t: ^testing.T) {
+	hs := harness(4, 3)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "x\naaaa bbbb\ny")
+
+	// 4 rows of text in 3: the long line's first row is the top one.
+	ui := frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "aaaa", "bbbb", "y")
+
+	widgets.focus(ui, &st)
+	ui = frame(hs, key(.Up))
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "x", "aaaa", "bbbb")
+
+	// Scrolling into the middle of a wrapped line, then back to the tail.
+	ui = frame(hs, key(.Down))
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, !st.paused)
+	expect_rows(t, screen_rows(&hs.buf), "aaaa", "bbbb", "y")
+
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st, {wrap = .Clip})
+	expect_rows(t, screen_rows(&hs.buf), "x", "aaaa", "y")
+}
+
+@(test)
+widget_log_view_markup_is_opt_in :: proc(t: ^testing.T) {
+	hs := harness(12, 2)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "[b]bold[/]\n[INFO] ok")
+
+	ui := frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "[b]bold[/]", "[INFO] ok")
+
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st, {markup = true})
+	expect_rows(t, screen_rows(&hs.buf)[:1], "bold")
+	expect_style(t, &hs.buf, {add = {.Bold}}, `
+		####
+	`)
+}
+
+@(test)
+widget_log_view_paused_view_survives_dropped_lines :: proc(t: ^testing.T) {
+	hs := harness(10, 2)
+	st := widgets.Log_State{max_lines = 4}
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "1\n2\n3\n4")
+	widgets.focus(frame(hs), &st)
+	ui := frame(hs, key(.Home))
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "1", "2")
+
+	// "1" drops off: the view holds on to "2"; then everything it showed
+	// is gone and it starts from the oldest line kept.
+	widgets.log_append(&st, "5")
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	expect_rows(t, screen_rows(&hs.buf), "2", "3     ↓ 1") // the short note: the long one doesn't fit
+	widgets.log_append(&st, "6\n7\n8")
+	ui = frame(hs)
+	widgets.log_view(ui, ui.area, &st)
+	testing.expect(t, st.paused)
+	expect_rows(t, screen_rows(&hs.buf)[:1], "5")
+}
+
+@(test)
+widget_log_view_scrollbar :: proc(t: ^testing.T) {
+	hs := harness(6, 4)
+	st: widgets.Log_State
+	defer widgets.log_destroy(&st)
+	widgets.log_append(&st, "1\n2\n3\n4\n5\n6\n7\n8")
+	ui := frame(hs)
+	widgets.log_view(ui, ui.area, &st, {scrollbar = true})
+	testing.expect(t, !st.paused) // drawing the bar alone doesn't pause
+	expect_screen(t, &hs.buf, `
+		5    │
+		6    │
+		7    ┃
+		8    ┃
+	`)
+	// Dragging the thumb to the top.
+	ui = frame(hs, click(5, 0))
+	widgets.log_view(ui, ui.area, &st, {scrollbar = true})
+	testing.expect(t, st.paused)
+	expect_rows(t, screen_rows(&hs.buf)[:1], "1    ┃")
+}

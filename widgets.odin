@@ -38,6 +38,15 @@ hscrollbar :: widgets.hscrollbar
 scroll_view :: widgets.scroll_view
 scroll_view_end :: widgets.scroll_view_end
 View_State :: widgets.View_State
+log_view :: widgets.log_view
+Log_State :: widgets.Log_State
+Log_Options :: widgets.Log_Options
+log_append :: widgets.log_append
+log_appendf :: widgets.log_appendf
+log_len :: widgets.log_len
+log_line :: widgets.log_line
+log_clear :: widgets.log_clear
+log_destroy :: widgets.log_destroy
 
 list :: widgets.list
 List_State :: widgets.List_State

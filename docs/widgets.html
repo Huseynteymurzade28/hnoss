@@ -27,6 +27,7 @@
 	<a href="#label">label</a>
 	<a href="#paragraph">paragraph</a>
 	<a href="#scroll_view">scroll_view</a>
+	<a href="#log_view">log_view</a>
 	<h4>Selection</h4>
 	<a href="#list">list</a>
 	<a href="#table">table</a>
@@ -95,6 +96,28 @@ scroll_view_end :: proc(ui: ^Ui, state: ^View_State)</div>
     hnoss.checkbox(ui, {content.x, content.y + i, content.width, 1}, name, &amp;picked[i])
 }
 hnoss.scroll_view_end(ui, &amp;view)</code></pre>
+</div>
+
+<h2 id="log_view">log_view</h2>
+<div class="widget">
+<div class="sig">log_view :: proc(ui: ^Ui, area: Rect, state: ^Log_State, opts := Log_Options{})
+log_append :: proc(state: ^Log_State, text: string)          <span class="c">// one line per "\n"</span>
+log_appendf :: proc(state: ^Log_State, format: string, args: ..any)</div>
+<p>Streaming output (logs, build output, chat) where lines are only ever appended. <code>Log_State</code> keeps copies of them in a ring buffer: once <code>max_lines</code> are kept (default 10 000; set it before the first append), each new line drops the oldest. The view follows the tail; scroll up and it holds still while lines keep coming, with an <em>↓ N new lines</em> note on the bottom row. <kbd>End</kbd>, scrolling back down to the bottom or a click on the note follows the tail again. <code>state.paused</code> tells you which it is.</p>
+<img src="widgets/log_view.svg" alt="log_view">
+<p class="keys">Keys (focused): <kbd>↑</kbd> <kbd>↓</kbd> or <kbd>k</kbd> <kbd>j</kbd>, <kbd>PgUp</kbd> <kbd>PgDn</kbd>, <kbd>Home</kbd> (<kbd>g</kbd>) <kbd>End</kbd> (<kbd>G</kbd>) · the wheel when hovered · a click focuses it.</p>
+<table class="ref">
+<tr><th>Log_Options</th><th></th></tr>
+<tr><td><code>wrap</code></td><td><code>.Word</code> (default) or <code>.Char</code> wrap long lines; <code>.Clip</code> and <code>.Ellipsis</code> cut them off</td></tr>
+<tr><td><code>markup</code></td><td>lines carry <a href="guide.html#markup">markup</a>; off by default, since log text is full of brackets</td></tr>
+<tr><td><code>scrollbar</code></td><td>in the rightmost column, when the lines don't fit (it counts lines, not wrapped rows)</td></tr>
+</table>
+<pre><code>logs := hnoss.Log_State{max_lines = 2000}
+<span class="k">defer</span> hnoss.log_destroy(&amp;logs)
+...
+hnoss.log_appendf(&amp;logs, <span class="s">"[green]INFO[/] %s: %d°C"</span>, city, temp)
+hnoss.log_view(ui, inner, &amp;logs, {markup = <span class="k">true</span>, scrollbar = <span class="k">true</span>})</code></pre>
+<p><code>log_len</code> and <code>log_line(state, i)</code> (0 = the oldest kept) read the lines back; <code>log_clear</code> drops them all.</p>
 </div>
 
 <h2 id="list">list</h2>
