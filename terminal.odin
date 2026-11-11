@@ -76,6 +76,8 @@ Terminal :: struct {
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
 	cursor_shape:   [2]u8, // shape and blink last sent with DECSCUSR; {0, 0} = the terminal default
+	title_buf:      [256]u8, // last set_title (truncated), sent again after a suspend
+	title_len:      int,
 }
 
 // What a frame's draw code works with. Valid between begin_frame and end_frame.
@@ -117,6 +119,7 @@ deinit :: proc(t: ^Terminal) {
 // Starts a frame. Picks up terminal resizes here, so a frame always matches
 // the current size. The returned Frame starts blank.
 begin_frame :: proc(t: ^Terminal) -> ^Frame {
+	check_resumed(t)
 	if sz, err := backend.size(&t.backend); err == .None {
 		area := Rect{0, 0, sz.cols, sz.rows}
 		if area != t.buffers[0].area {
@@ -204,6 +207,16 @@ set_clipboard :: proc(t: ^Terminal, text: string) {
 // are dropped so the title can't end the sequence early. Sent with the
 // next end_frame.
 set_title :: proc(t: ^Terminal, title: string) {
+	n := copy(t.title_buf[:], title)
+	for n < len(title) && n > 0 && title[n] & 0xc0 == 0x80 {
+		n -= 1 // don't cut a UTF-8 sequence in half
+	}
+	t.title_len = n
+	write_title(t, title)
+}
+
+@(private = "file")
+write_title :: proc(t: ^Terminal, title: string) {
 	backend.write(&t.backend, "\x1b]2;")
 	for r in title {
 		if r >= ' ' && r != 0x7f && !(r >= 0x80 && r < 0xa0) {
@@ -234,6 +247,33 @@ detect_color_depth :: proc() -> Color_Depth {
 	})
 }
 
+// Restores the terminal and stops the process, as Ctrl+Z does in a shell;
+// with Option.Ctrl_Z_Suspends (on by default) poll_events calls it for
+// Ctrl+Z. Returns once the shell continues the process (`fg`), with raw
+// mode, the alt screen, mouse capture etc. back and a full redraw due on the
+// next frame.
+suspend :: proc(t: ^Terminal) -> Error {
+	err := backend.suspend(&t.backend)
+	check_resumed(t)
+	return err
+}
+
+// After a stop and continue (ours or from outside) the screen is not what
+// `front` says, and the terminal forgot the title and cursor shape.
+@(private = "file")
+check_resumed :: proc(t: ^Terminal) -> bool {
+	if !backend.take_resumed() {
+		return false
+	}
+	t.needs_clear = true
+	t.cursor_shape = {}
+	t.cursor_shown = false
+	if t.title_len > 0 {
+		write_title(t, string(t.title_buf[:t.title_len]))
+	}
+	return true
+}
+
 // Forces the next frame to repaint the whole screen (e.g. after something
 // else wrote to the terminal).
 clear :: proc(t: ^Terminal) {
@@ -261,7 +301,10 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 			t.error = err
 			break
 		}
-		if res.resized {
+		resumed := check_resumed(t)
+		if res.resized || resumed {
+			// A Resize after a resume too, so an app that only redraws on
+			// events repaints (the size may have changed meanwhile anyway).
 			if sz, serr := backend.size(&t.backend); serr == .None {
 				append(&events, Resize{sz.cols, sz.rows})
 			}
@@ -270,12 +313,24 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 			first := len(events)
 			input.feed(&t.parser, t.read_buf[:res.n], &events, allocator)
 			now := time.tick_now()
-			for &ev in events[first:] {
-				if m, ok := &ev.(Mouse); ok {
+			for i := first; i < len(events); i += 1 {
+				if m, ok := &events[i].(Mouse); ok {
 					input.track_click(&t.clicks, m, now)
+				} else if .Ctrl_Z_Suspends in t.backend.opts && input.is_char(events[i], 'z', {.Ctrl}) {
+					ordered_remove(&events, i)
+					i -= 1
+					if suspend(t) == .None {
+						resumed = true
+						if sz, serr := backend.size(&t.backend); serr == .None {
+							append(&events, Resize{sz.cols, sz.rows})
+						}
+					}
 				}
 			}
 			t.kitty_keyboard = t.parser.keyboard_flags > 0
+		}
+		if resumed && !input.has_pending(&t.parser) {
+			return events[:]
 		}
 
 		switch {

@@ -94,11 +94,12 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <tr><th>Option</th><th>Default</th><th>Effect</th></tr>
 <tr><td><code>.Alt_Screen</code></td><td>on</td><td>Draw on the alternate screen; the shell's scrollback is untouched.</td></tr>
 <tr><td><code>.Hide_Cursor</code></td><td>on</td><td>Hide the cursor (a focused text input shows it at the caret).</td></tr>
-<tr><td><code>.Signal_Handlers</code></td><td>on</td><td>Restore the terminal on SIGINT/TERM/HUP/QUIT and crash signals, then re-raise.</td></tr>
+<tr><td><code>.Signal_Handlers</code></td><td>on</td><td>Restore the terminal on SIGINT/TERM/HUP/QUIT and crash signals, then re-raise. On SIGTSTP restore it and stop; on SIGCONT put it back and redraw.</td></tr>
 <tr><td><code>.Bracketed_Paste</code></td><td>on</td><td>A paste arrives as one <code>Paste</code> event instead of a burst of keys.</td></tr>
 <tr><td><code>.Mouse_Capture</code></td><td>off</td><td>Report clicks, drags, motion and wheel. While on, the terminal's own text selection needs Shift.</td></tr>
 <tr><td><code>.Kitty_Keyboard</code></td><td>on</td><td>Ask for the <a href="https://sw.kovidgoyal.net/kitty/keyboard-protocol/">kitty keyboard protocol</a>: unambiguous keys and instant <kbd>Esc</kbd>. Ignored by terminals that don't support it; <code>term.kitty_keyboard</code> tells you whether it is active.</td></tr>
 <tr><td><code>.Focus_Events</code></td><td>off</td><td>Report when the terminal window gains or loses focus, as <code>Focus</code> events (e.g. to pause an animation).</td></tr>
+<tr><td><code>.Ctrl_Z_Suspends</code></td><td>on</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> suspends the app like in a shell: the terminal is restored and the process stops; <code>fg</code> brings it back with a full redraw. The key is not reported. Leave it out if you want <kbd>Ctrl</kbd>+<kbd>Z</kbd> yourself (e.g. for undo); <code>hnoss.suspend(&amp;term)</code> does the same on demand.</td></tr>
 </table>
 <pre><code>term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})</code></pre>
 <p>The terminal is restored by <code>deinit</code>, when <code>main</code> returns, and on signals and crashes. For panics, install the provided assertion handler: it restores the terminal <em>before</em> the panic message is printed, so you can read it:</p>
@@ -108,7 +109,7 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 hnoss.set_clipboard(&amp;term, selected)       <span class="c">// OSC 52 copy, works over SSH</span>
 f.cursor = {x, y, true, .Bar, false}       <span class="c">// shape: .Default, .Block, .Underline, .Bar; blink</span></code></pre>
 <p>Text inputs show a bar cursor. The cursor shape is reset on exit.</p>
-<div class="note">Raw mode turns off signal generation, so <kbd>Ctrl</kbd>+<kbd>C</kbd> arrives as a key (<code>hnoss.is_char(ev, 'c', {.Ctrl})</code>) and your app decides what it means. A SIGINT sent from outside still restores the terminal.</div>
+<div class="note">Raw mode turns off signal generation, so <kbd>Ctrl</kbd>+<kbd>C</kbd> arrives as a key (<code>hnoss.is_char(ev, 'c', {.Ctrl})</code>) and your app decides what it means. A SIGINT sent from outside still restores the terminal. <kbd>Ctrl</kbd>+<kbd>Z</kbd> is handled for you unless you drop <code>.Ctrl_Z_Suspends</code>.</div>
 
 <h2 id="events">Events</h2>
 <p><code>poll_events(&amp;term, timeout_ms)</code> returns every event that arrived, as a slice in the temp allocator:</p>

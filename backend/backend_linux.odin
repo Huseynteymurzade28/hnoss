@@ -11,8 +11,11 @@ Backend :: struct {
 	errno: linux.Errno, // OS error behind the last non-None Error, for diagnostics
 
 	winch_installed: bool,
+	job_installed:   bool, // SIGTSTP / SIGCONT have our handlers
 	n_installed:     int, // how many of TERMINATING_SIGNALS have our handler
 	old_winch:       linux.Sig_Action,
+	old_tstp:        linux.Sig_Action,
+	old_cont:        linux.Sig_Action,
 	old_actions:     [len(TERMINATING_SIGNALS)]linux.Sig_Action,
 }
 
@@ -29,16 +32,21 @@ TERMINATING_SIGNALS :: [?]linux.Signal{
 // arguments, so whatever they need has to live here.
 @(private)
 g_state: struct {
-	owned:    bool, // a Backend is between init and deinit
-	active:   bool, // atomic; true while the terminal is in raw mode
-	resized:  bool, // atomic; set by the SIGWINCH handler
-	fd:       linux.Fd,
-	original: Termios,
+	owned:     bool, // a Backend is between init and deinit
+	active:    bool, // atomic; true while the terminal is in raw mode
+	resized:   bool, // atomic; set by the SIGWINCH handler
+	suspended: bool, // atomic; the terminal was restored for a stop and should come back on continue
+	resumed:   bool, // atomic; set on SIGCONT, the screen needs a full redraw
+	fd:        linux.Fd,
+	original:  Termios,
+	raw:       Termios,
 	// Self-pipe: the SIGWINCH handler writes a byte so a blocked poll(2)
 	// wakes up. https://cr.yp.to/docs/selfpipe.html
 	wake:     [2]linux.Fd,
-	seq:      [128]u8, // escape sequence that undoes what init turned on
-	seq_len:  int,
+	seq:       [128]u8, // escape sequence that undoes what init turned on
+	seq_len:   int,
+	enter:     [128]u8, // escape sequence that turns it on (again, after a stop)
+	enter_len: int,
 }
 
 init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (err: Error) {
@@ -70,38 +78,22 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 
 	g_state.fd = fd
 	g_state.original = original
-	g_state.seq_len = 0
-	push_seq(CANCEL_SEQUENCE)
-	push_seq(RESET_SGR)
-	if .Mouse_Capture in opts { push_seq(DISABLE_MOUSE) }
-	if .Bracketed_Paste in opts { push_seq(DISABLE_BRACKETED_PASTE) }
-	if .Focus_Events in opts { push_seq(DISABLE_FOCUS_EVENTS) }
-	if .Hide_Cursor in opts { push_seq(SHOW_CURSOR) }
-	if .Kitty_Keyboard in opts { push_seq(DISABLE_KITTY_KEYBOARD) }
-	push_seq(RESET_CURSOR_SHAPE)
-	push_seq(POP_TITLE)
-	if .Alt_Screen in opts { push_seq(LEAVE_ALT_SCREEN) }
+	g_state.raw = make_raw(original)
+	build_sequences(opts)
 	intrinsics.atomic_store(&g_state.resized, false)
+	intrinsics.atomic_store(&g_state.suspended, false)
+	intrinsics.atomic_store(&g_state.resumed, false)
 	// Arm the hook before touching the terminal, so a failure from here
 	// on still gets undone.
 	intrinsics.atomic_store(&g_state.active, true)
 
 	install_signal_handlers(b) or_return
 
-	raw := make_raw(original)
-	if errno = ioctl(fd, TCSETS, &raw); errno != .NONE {
+	if errno = ioctl(fd, TCSETS, &g_state.raw); errno != .NONE {
 		return fail(b, .Termios_Failed, errno)
 	}
 
-	if .Alt_Screen in opts { write(b, ENTER_ALT_SCREEN) }
-	if .Hide_Cursor in opts { write(b, HIDE_CURSOR) }
-	if .Bracketed_Paste in opts { write(b, ENABLE_BRACKETED_PASTE) }
-	if .Mouse_Capture in opts { write(b, ENABLE_MOUSE) }
-	if .Kitty_Keyboard in opts { write(b, ENABLE_KITTY_KEYBOARD) }
-	if .Focus_Events in opts { write(b, ENABLE_FOCUS_EVENTS) }
-	write(b, PUSH_TITLE)
-	write(b, CLEAR_SCREEN)
-	write(b, CURSOR_HOME)
+	write_bytes(b, g_state.enter[:g_state.enter_len])
 	return flush(b)
 }
 
@@ -135,6 +127,69 @@ restore_terminal :: proc "contextless" () {
 	}
 	write_all(g_state.fd, g_state.seq[:g_state.seq_len])
 	ioctl(g_state.fd, TCSETS, &g_state.original)
+}
+
+// Puts back what restore_terminal undid for a stop (see stop_and_resume).
+// Async-signal-safe like restore_terminal; does nothing unless suspended.
+@(private = "file")
+resume_terminal :: proc "contextless" () {
+	if !intrinsics.atomic_exchange(&g_state.suspended, false) {
+		return
+	}
+	// Armed first, as in init: a signal from here on restores again.
+	intrinsics.atomic_store(&g_state.active, true)
+	// From a background job this raises SIGTTOU and stops us again until
+	// `fg`, which is what should happen.
+	ioctl(g_state.fd, TCSETS, &g_state.raw)
+	write_all(g_state.fd, g_state.enter[:g_state.enter_len])
+	mark_resumed()
+}
+
+// Restores the terminal, stops the process like a Ctrl+Z in cooked mode
+// would, and once it is continued (`fg`) puts raw mode and everything init
+// turned on back. `pid` 0 stops the whole process group, as the kernel does
+// for Ctrl+Z (e.g. `app | less`). Async-signal-safe.
+@(private = "file")
+stop_and_resume :: proc "contextless" (pid: linux.Pid) {
+	if intrinsics.atomic_load(&g_state.active) {
+		intrinsics.atomic_store(&g_state.suspended, true)
+		restore_terminal()
+	}
+	// SIGTSTP with the default action stops us; our own handler (if
+	// installed) is put back afterwards.
+	dfl := linux.Sig_Action{special = .SIG_DFL}
+	old: linux.Sig_Action
+	linux.rt_sigaction(.SIGTSTP, &dfl, &old)
+	linux.kill(pid, .SIGTSTP)
+	// Continued. The SIGCONT handler, if installed, has already resumed.
+	linux.rt_sigaction(.SIGTSTP, &old, nil)
+	resume_terminal()
+}
+
+// Restores the terminal and stops the process (what Ctrl+Z does in a
+// program that isn't in raw mode). Returns after the shell continues it,
+// with the terminal back as init set it up; take_resumed then reports true
+// so the caller can redraw everything.
+suspend :: proc(b: ^Backend) -> Error {
+	if b.fd < 0 {
+		return .None
+	}
+	err := flush(b)
+	stop_and_resume(0)
+	return err
+}
+
+// True once after the process was stopped and continued: the screen was
+// left (or changed by whatever ran meanwhile) and needs a full redraw.
+take_resumed :: proc "contextless" () -> bool {
+	return intrinsics.atomic_exchange(&g_state.resumed, false)
+}
+
+@(private = "file")
+mark_resumed :: proc "contextless" () {
+	intrinsics.atomic_store(&g_state.resumed, true)
+	one := [1]u8{1}
+	linux.write(g_state.wake[1], one[:]) // wake a blocked read
 }
 
 size :: proc(b: ^Backend) -> (Size, Error) {
@@ -215,10 +270,44 @@ fail :: proc "contextless" (b: ^Backend, err: Error, errno: linux.Errno) -> Erro
 	return err
 }
 
+// Fills g_state.enter (turn everything on) and g_state.seq (turn it off
+// again, in reverse order).
+@(private = "file")
+build_sequences :: proc "contextless" (opts: Options) {
+	g_state.enter_len = 0
+	if .Alt_Screen in opts { push_enter(ENTER_ALT_SCREEN) }
+	if .Hide_Cursor in opts { push_enter(HIDE_CURSOR) }
+	if .Bracketed_Paste in opts { push_enter(ENABLE_BRACKETED_PASTE) }
+	if .Mouse_Capture in opts { push_enter(ENABLE_MOUSE) }
+	if .Kitty_Keyboard in opts { push_enter(ENABLE_KITTY_KEYBOARD) }
+	if .Focus_Events in opts { push_enter(ENABLE_FOCUS_EVENTS) }
+	push_enter(PUSH_TITLE)
+	push_enter(CLEAR_SCREEN)
+	push_enter(CURSOR_HOME)
+
+	g_state.seq_len = 0
+	push_seq(CANCEL_SEQUENCE)
+	push_seq(RESET_SGR)
+	if .Mouse_Capture in opts { push_seq(DISABLE_MOUSE) }
+	if .Bracketed_Paste in opts { push_seq(DISABLE_BRACKETED_PASTE) }
+	if .Focus_Events in opts { push_seq(DISABLE_FOCUS_EVENTS) }
+	if .Hide_Cursor in opts { push_seq(SHOW_CURSOR) }
+	if .Kitty_Keyboard in opts { push_seq(DISABLE_KITTY_KEYBOARD) }
+	push_seq(RESET_CURSOR_SHAPE)
+	push_seq(POP_TITLE)
+	if .Alt_Screen in opts { push_seq(LEAVE_ALT_SCREEN) }
+}
+
 @(private = "file")
 push_seq :: proc "contextless" (s: string) {
 	n := copy(g_state.seq[g_state.seq_len:], s)
 	g_state.seq_len += n
+}
+
+@(private = "file")
+push_enter :: proc "contextless" (s: string) {
+	n := copy(g_state.enter[g_state.enter_len:], s)
+	g_state.enter_len += n
 }
 
 @(private = "file")
@@ -255,6 +344,19 @@ install_signal_handlers :: proc(b: ^Backend) -> Error {
 	if .Signal_Handlers not_in b.opts {
 		return .None
 	}
+	// NODEFER: the handler re-raises SIGTSTP to actually stop, which must
+	// not stay blocked until the handler returns.
+	tstp := linux.Sig_Action{handler = tstp_handler, flags = {.RESTART, .NODEFER}}
+	cont := linux.Sig_Action{handler = cont_handler, flags = {.RESTART}}
+	if errno := linux.rt_sigaction(.SIGCONT, &cont, &b.old_cont); errno != .NONE {
+		return fail(b, .Signal_Failed, errno)
+	}
+	if errno := linux.rt_sigaction(.SIGTSTP, &tstp, &b.old_tstp); errno != .NONE {
+		linux.rt_sigaction(.SIGCONT, &b.old_cont, nil)
+		return fail(b, .Signal_Failed, errno)
+	}
+	b.job_installed = true
+
 	for sig, i in TERMINATING_SIGNALS {
 		// RESETHAND: the disposition goes back to SIG_DFL on entry, so the
 		// re-raise in the handler kills the process the normal way.
@@ -272,11 +374,16 @@ uninstall_signal_handlers :: proc(b: ^Backend) {
 	if b.winch_installed {
 		linux.rt_sigaction(.SIGWINCH, &b.old_winch, nil)
 	}
+	if b.job_installed {
+		linux.rt_sigaction(.SIGTSTP, &b.old_tstp, nil)
+		linux.rt_sigaction(.SIGCONT, &b.old_cont, nil)
+	}
 	sigs := TERMINATING_SIGNALS
 	for i in 0 ..< b.n_installed {
 		linux.rt_sigaction(sigs[i], &b.old_actions[i], nil)
 	}
 	b.winch_installed = false
+	b.job_installed = false
 	b.n_installed = 0
 }
 
@@ -295,4 +402,19 @@ terminating_handler :: proc "c" (sig: linux.Signal) {
 	// For faults, returning re-executes the faulting instruction, which
 	// then hits SIG_DFL as well.
 	linux.kill(linux.getpid(), sig)
+}
+
+// `kill -TSTP` from outside (Ctrl+Z itself arrives as a key, see
+// Option.Ctrl_Z_Suspends): restore, stop, and come back on continue.
+@(private = "file")
+tstp_handler :: proc "c" (sig: linux.Signal) {
+	stop_and_resume(linux.getpid())
+}
+
+// Continued after any stop, ours or a SIGSTOP from outside: put the
+// terminal back if we restored it, and have the next frame redraw all.
+@(private = "file")
+cont_handler :: proc "c" (sig: linux.Signal) {
+	resume_terminal()
+	mark_resumed()
 }

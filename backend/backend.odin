@@ -9,6 +9,7 @@ Option :: enum u8 {
 	Hide_Cursor,
 	// Restore the terminal and re-raise on SIGINT/SIGTERM/SIGHUP/SIGQUIT and
 	// on fatal signals (SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGTRAP, SIGABRT).
+	// On SIGTSTP restore it and stop; on SIGCONT put it back and redraw.
 	// Any handlers you installed before `init` are put back by `deinit`.
 	Signal_Handlers,
 	// Pasted text arrives wrapped in markers (xterm ?2004) and becomes one
@@ -28,10 +29,16 @@ Option :: enum u8 {
 	// Report when the terminal window gains or loses focus (xterm ?1004)
 	// as Focus events. Off by default.
 	Focus_Events,
+	// Ctrl+Z suspends the program like in a shell (see hnoss.suspend):
+	// the terminal is restored, the process stops, and `fg` brings it back
+	// with a full redraw. poll_events then swallows the key. Leave it out if
+	// the app wants Ctrl+Z for itself (e.g. undo). A `kill -TSTP` from
+	// outside is handled with Signal_Handlers either way.
+	Ctrl_Z_Suspends,
 }
 Options :: bit_set[Option; u8]
 
-DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste, .Kitty_Keyboard}
+DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste, .Kitty_Keyboard, .Ctrl_Z_Suspends}
 
 Error :: enum u8 {
 	None,

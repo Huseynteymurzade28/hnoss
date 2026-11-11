@@ -39,3 +39,19 @@ title_drops_control_characters :: proc(t: ^testing.T) {
 	hnoss.set_title(&term, "hnoss\x1b]0;evil\x07 — Şəki\u009b")
 	testing.expect_value(t, string(term.backend.out[:]), "\x1b]2;hnoss]0;evil — Şəki\x07")
 }
+
+@(test)
+title_is_kept_for_resume_without_splitting_a_rune :: proc(t: ^testing.T) {
+	term: hnoss.Terminal
+	defer delete(term.backend.out)
+	buf: [300]u8
+	for &c in buf { c = 'a' }
+
+	copy(buf[254:], "ə") // ends exactly at the 256-byte limit: kept
+	hnoss.set_title(&term, string(buf[:260]))
+	testing.expect_value(t, term.title_len, 256)
+
+	copy(buf[255:], "ə") // straddles the limit: dropped whole
+	hnoss.set_title(&term, string(buf[:260]))
+	testing.expect_value(t, term.title_len, 255)
+}
