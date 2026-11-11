@@ -66,6 +66,9 @@ spinner :: widgets.spinner
 Spinner_Kind :: widgets.Spinner_Kind
 Spinner_Options :: widgets.Spinner_Options
 sparkline :: widgets.sparkline
+bar_chart :: widgets.bar_chart
+Bar :: widgets.Bar
+Bar_Chart_Options :: widgets.Bar_Chart_Options
 tabs :: widgets.tabs
 input :: widgets.input
 Input_State :: widgets.Input_State

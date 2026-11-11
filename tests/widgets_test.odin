@@ -1453,3 +1453,103 @@ widget_log_view_scrollbar :: proc(t: ^testing.T) {
 	testing.expect(t, st.paused)
 	expect_rows(t, screen_rows(&hs.buf)[:1], "1    ┃")
 }
+
+@(test)
+widget_bar_chart_vertical :: proc(t: ^testing.T) {
+	hs := harness(11, 6)
+	ui := frame(hs)
+	// 4 bar rows (6 - value row - label row) = 32 eighths for 8.
+	widgets.bar_chart(ui, ui.area, {{"a", 8}, {"b", 4}, {"c", 1.5}})
+	expect_screen(t, &hs.buf, `
+		 8
+		███
+		███  4
+		███ ███ 1.5
+		███ ███ ▆▆▆
+		 a   b   c
+	`)
+	expect_style(t, &hs.buf, widgets.DEFAULT_THEME.muted, `
+
+
+		       
+		
+		
+		 #   #   #
+	`)
+}
+
+@(test)
+widget_bar_chart_vertical_options :: proc(t: ^testing.T) {
+	hs := harness(8, 3)
+	ui := frame(hs)
+	// Fixed width 1, no gap, no labels, no values; max_value scales; a
+	// value that doesn't fit its bar's width is left out, not cut.
+	widgets.bar_chart(ui, ui.area, {{"", 3}, {"", 6}, {"", 0.1}, {"", 0}},
+		{max_value = 6, bar_width = 1, gap = 0, hide_values = true})
+	expect_screen(t, &hs.buf, `
+		 █
+		▄█
+		██▁
+	`)
+
+	ui = frame(hs)
+	widgets.bar_chart(ui, ui.area, {{"x", 100}, {"y", 50}}, {bar_width = 2})
+	expect_screen(t, &hs.buf, `
+		   50
+		██ ▄▄
+		x  y
+	`) // "100" doesn't fit in 2 cells: no value rather than a wrong one
+
+	// Bars that don't fit are left out; `format` formats the values.
+	hs = harness(7, 3)
+	ui = frame(hs)
+	widgets.bar_chart(ui, ui.area, {{"", 2}, {"", 2}, {"", 2}}, {bar_width = 3, format = "%vk"})
+	expect_screen(t, &hs.buf, `
+		2k  2k
+		███ ███
+		███ ███
+	`)
+}
+
+@(test)
+widget_bar_chart_horizontal :: proc(t: ^testing.T) {
+	hs := harness(16, 3)
+	ui := frame(hs)
+	// Label column 4 (+1), value column 2 (+1): 8 cells of bar.
+	widgets.bar_chart(ui, ui.area, {{"Bakı", 16}, {"Şəki", 9}, {"Quba", 1}}, {horizontal = true})
+	expect_screen(t, &hs.buf, `
+		Bakı ████████ 16
+		Şəki ████▌ 9
+		Quba ▌ 1
+	`)
+
+	// Thicker bars with gaps; the label sits on the middle row.
+	hs = harness(10, 5)
+	ui = frame(hs)
+	widgets.bar_chart(ui, ui.area, {{"a", 1}, {"b", 2}}, {horizontal = true, bar_width = 2, gap = 1, hide_values = true})
+	expect_screen(t, &hs.buf, `
+		  ████
+		a ████
+		
+		  ████████
+		b ████████
+	`)
+}
+
+@(test)
+widget_bar_chart_colors :: proc(t: ^testing.T) {
+	hs := harness(3, 2)
+	red := style.Rgb{255, 0, 0}
+	blue := style.Rgb{0, 0, 255}
+	ui := frame(hs)
+	widgets.bar_chart(ui, ui.area, {{"", 2}, {"", 2}},
+		{bar_width = 1, gradient = {red, blue}, colors = {{}, {fg = style.Named_Color.Green}}, hide_values = true})
+	// The gradient runs base to tip; a bar's own color wins (an empty
+	// Style there still counts: theme.accent, no gradient).
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 1).fg, widgets.DEFAULT_THEME.accent.fg)
+	testing.expect_value(t, buffer.get(&hs.buf, 2, 0).fg, style.Color(style.Named_Color.Green))
+	ui = frame(hs)
+	widgets.bar_chart(ui, ui.area, {{"", 2}}, {bar_width = 1, gradient = {red, blue}, hide_values = true})
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 1).fg, style.Color(style.gradient({red, blue}, 0.25)))
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).fg, style.Color(style.gradient({red, blue}, 0.75)))
+}

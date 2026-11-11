@@ -38,6 +38,7 @@
 	<a href="#gauge">gauge</a>
 	<a href="#spinner">spinner</a>
 	<a href="#sparkline">sparkline</a>
+	<a href="#bar_chart">bar_chart</a>
 	<a href="#graph">graph</a>
 	<h4>Editing</h4>
 	<a href="#input">input</a>
@@ -205,6 +206,25 @@ hnoss.spinner(ui, row2, time.tick_since(start), "Fetching", {kind = .Arc})</code
 <div class="sig">sparkline :: proc(ui: ^Ui, area: Rect, data: []f64, max_value := 0.0, st: Maybe(Style) = nil)</div>
 <p>The most recent values as bars, newest on the right, eight levels per row. <code>max_value = 0</code> scales to the largest value shown.</p>
 <img src="widgets/sparkline.svg" alt="sparkline">
+</div>
+
+<h2 id="bar_chart">bar_chart</h2>
+<div class="widget">
+<div class="sig">bar_chart :: proc(ui: ^Ui, area: Rect, bars: []Bar, opts := Bar_Chart_Options{})
+Bar :: struct { label: string, value: f64 }</div>
+<p>Labelled bars whose tips are drawn in eighths of a cell. Vertical bars (the default) share the width, with the value above each bar and the label below; horizontal ones get a row each, the label on the left and the value after the tip. Bars that don't fit are left out, and so is a value too wide for its bar, rather than shown cut short.</p>
+<img src="widgets/bar_chart.svg" alt="bar_chart">
+<table class="ref">
+<tr><th>Bar_Chart_Options</th><th></th></tr>
+<tr><td><code>max_value</code></td><td>the value that fills the length; <code>0</code> = the largest one</td></tr>
+<tr><td><code>horizontal</code></td><td>bars grow to the right</td></tr>
+<tr><td><code>bar_width</code> · <code>gap</code></td><td>cells across a bar (<code>0</code>: share the width / one row) · between bars (<code>nil</code>: 1 vertical, 0 horizontal)</td></tr>
+<tr><td><code>gradient</code></td><td>colors from the base of a bar to its tip (default <code>theme.accent</code>)</td></tr>
+<tr><td><code>colors</code></td><td><code>colors[i]</code> for bar <code>i</code>, over the gradient</td></tr>
+<tr><td><code>format</code> · <code>hide_values</code></td><td>a <code>fmt</code> format for the values, e.g. <code>"%.1f°C"</code> (default <code>42</code> or <code>3.5</code>) · no values</td></tr>
+</table>
+<pre><code>hnoss.bar_chart(ui, inner, {{<span class="s">"Bakı"</span>, 32}, {<span class="s">"Gəncə"</span>, 33}, {<span class="s">"Şəki"</span>, 29}},
+    {horizontal = <span class="k">true</span>, format = <span class="s">"%v°C"</span>, gradient = {hnoss.hex(0xf9d423), hnoss.hex(0xff4e50)}})</code></pre>
 </div>
 
 <h2 id="graph">graph</h2>
