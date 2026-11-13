@@ -1553,3 +1553,141 @@ widget_bar_chart_colors :: proc(t: ^testing.T) {
 	testing.expect_value(t, buffer.get(&hs.buf, 0, 1).fg, style.Color(style.gradient({red, blue}, 0.25)))
 	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).fg, style.Color(style.gradient({red, blue}, 0.75)))
 }
+
+@(test)
+widget_slider :: proc(t: ^testing.T) {
+	hs := harness(16, 1)
+	v := 40.0
+	ui := frame(hs)
+	// 16 cells: "100" takes 3 and a gap, so the track is 12 (knob at 0..11).
+	testing.expect(t, !widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true}))
+	expect_rows(t, screen_rows(&hs.buf), "━━━━●───────  40")
+
+	// Keys need focus; a press on the track focuses it and jumps there.
+	ui = frame(hs, key(.Right))
+	testing.expect(t, !widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true}))
+	ui = frame(hs, click(11, 0))
+	testing.expect(t, widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true}))
+	testing.expect_value(t, v, 100)
+	testing.expect(t, widgets.focused(ui, &v))
+	expect_rows(t, screen_rows(&hs.buf), "━━━━━━━━━━━● 100")
+
+	// Dragging keeps following past the track's end, snapped to steps.
+	ui = frame(hs, input.Mouse{kind = .Drag, button = .Left, x = 3, y = 0})
+	widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true})
+	testing.expect_value(t, v, 30) // 3/11 of 100 is 27
+	ui = frame(hs, input.Mouse{kind = .Release, button = .Left, x = 40, y = 5})
+	widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true})
+	testing.expect(t, hs.mem.active == nil)
+
+	ui = frame(hs, key(.Left), ch('h'), key(.Page_Up), key(.Up))
+	widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true})
+	testing.expect_value(t, v, 100) // 30 - 10 - 10, then +100 stops at the end
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1) // ↑ is left for the app
+	ui = frame(hs, key(.Home), wheel(5, 0, false))
+	widgets.slider(ui, ui.area, &v, 0, 100, {step = 10, show_value = true})
+	testing.expect_value(t, v, 10)
+
+	// Fractional steps format with their decimals; the range's end stays reachable.
+	f := 0.3
+	ui = frame(hs)
+	widgets.slider(ui, ui.area, &f, 0, 1, {step = 0.25, show_value = true})
+	testing.expect_value(t, f, 0.25)
+	expect_rows(t, screen_rows(&hs.buf), "━━━●─────── 0.25")
+	g := 0.95
+	ui = frame(hs)
+	widgets.slider(ui, ui.area, &g, 0, 1, {step = 0.3})
+	testing.expect_value(t, g, 0.9)
+	ui = frame(hs, key(.End))
+	widgets.focus(ui, &g)
+	widgets.slider(ui, ui.area, &g, 0, 1, {step = 0.3})
+	testing.expect_value(t, g, 1)
+}
+
+@(test)
+widget_number_input :: proc(t: ^testing.T) {
+	hs := harness(10, 1)
+	n := widgets.Number_State{value = 42}
+	opts := widgets.Number_Options{min = 0, max = 100}
+	ui := frame(hs)
+	testing.expect(t, !widgets.number_input(ui, ui.area, &n, opts))
+	expect_rows(t, screen_rows(&hs.buf), "42     − +")
+	testing.expect(t, !hs.cursor.visible)
+
+	// Focused: the caret goes after the text; ↑ ↓ PgUp step and clamp.
+	ui = frame(hs, key(.Up), key(.Up))
+	widgets.focus(ui, &n)
+	testing.expect(t, widgets.number_input(ui, ui.area, &n, opts))
+	testing.expect_value(t, n.value, 44)
+	testing.expect(t, hs.cursor.visible && hs.cursor.x == 2)
+	ui = frame(hs, key(.Page_Up), key(.Page_Up), key(.Page_Up), key(.Page_Up), key(.Page_Up), key(.Page_Up))
+	widgets.number_input(ui, ui.area, &n, opts)
+	testing.expect_value(t, n.value, 100)
+
+	// Typing only takes what keeps it a number; Enter commits and clamps.
+	ui = frame(hs, key(.Backspace), key(.Backspace), key(.Backspace), ch('-'), ch('7'), ch('x'), ch('.'), ch('5'))
+	testing.expect(t, !widgets.number_input(ui, ui.area, &n, opts))
+	expect_rows(t, screen_rows(&hs.buf)[:1], "75     − +")
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0) // rejected keys are still the field's
+	ui = frame(hs, key(.Enter))
+	testing.expect(t, widgets.number_input(ui, ui.area, &n, opts))
+	testing.expect(t, n.submitted)
+	testing.expect_value(t, n.value, 75)
+	ui = frame(hs, ch('0'), key(.Enter))
+	testing.expect(t, widgets.number_input(ui, ui.area, &n, opts))
+	testing.expect_value(t, n.value, 100) // 750
+	expect_rows(t, screen_rows(&hs.buf)[:1], "100    − +")
+
+	// Esc puts the value back; with nothing to undo it is left for the app.
+	ui = frame(hs, key(.Backspace), key(.Esc))
+	widgets.number_input(ui, ui.area, &n, opts)
+	expect_rows(t, screen_rows(&hs.buf)[:1], "100    − +")
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+	ui = frame(hs, key(.Esc))
+	widgets.number_input(ui, ui.area, &n, opts)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+
+	// Losing focus commits what was typed; text that isn't a number is dropped.
+	ui = frame(hs, key(.Backspace), key(.Backspace))
+	widgets.number_input(ui, ui.area, &n, opts)
+	ui = frame(hs)
+	widgets.focus(ui, nil)
+	testing.expect(t, widgets.number_input(ui, ui.area, &n, opts))
+	testing.expect_value(t, n.value, 1)
+	ui = frame(hs, click(0, 0), key(.Backspace))
+	widgets.number_input(ui, ui.area, &n, opts)
+	ui = frame(hs)
+	widgets.focus(ui, nil)
+	testing.expect(t, !widgets.number_input(ui, ui.area, &n, opts))
+	testing.expect_value(t, n.value, 1)
+
+	// The buttons and the wheel step it.
+	ui = frame(hs, click(9, 0), click(9, 0), click(7, 0), wheel(3, 0, false))
+	widgets.number_input(ui, ui.area, &n, opts)
+	testing.expect_value(t, n.value, 3)
+}
+
+@(test)
+widget_number_input_decimals :: proc(t: ^testing.T) {
+	hs := harness(10, 1)
+	n := widgets.Number_State{value = 1.25}
+	opts := widgets.Number_Options{step = 0.5, decimals = 1}
+	ui := frame(hs)
+	widgets.number_input(ui, ui.area, &n, opts)
+	testing.expect_value(t, n.value, 1.3) // rounded to one decimal
+	expect_rows(t, screen_rows(&hs.buf), "1.3    − +")
+
+	// One point, one decimal; a minus is fine without a min.
+	ui = frame(hs, key(.Home), ch('-'), key(.End), ch('7'), ch('.'), key(.Down))
+	widgets.focus(ui, &n)
+	widgets.number_input(ui, ui.area, &n, opts)
+	testing.expect_value(t, n.value, -1.8)
+	expect_rows(t, screen_rows(&hs.buf), "-1.8   − +")
+
+	// With a min of 0, no minus at all.
+	m := widgets.Number_State{}
+	ui = frame(hs, ch('-'), ch('3'))
+	widgets.focus(ui, &m)
+	widgets.number_input(ui, ui.area, &m, {min = 0})
+	expect_rows(t, screen_rows(&hs.buf), "03     − +")
+}

@@ -84,6 +84,11 @@ toggle :: widgets.toggle
 radio :: widgets.radio
 button :: widgets.button
 select :: widgets.select
+slider :: widgets.slider
+Slider_Options :: widgets.Slider_Options
+number_input :: widgets.number_input
+Number_State :: widgets.Number_State
+Number_Options :: widgets.Number_Options
 Select_State :: widgets.Select_State
 Select_Options :: widgets.Select_Options
 Button_State :: widgets.Button_State

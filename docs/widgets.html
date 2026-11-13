@@ -46,6 +46,7 @@
 	<a href="#checkbox">checkbox · toggle · radio</a>
 	<a href="#button">button</a>
 	<a href="#select">select</a>
+	<a href="#slider">slider · number_input</a>
 	<h4>Overlays</h4>
 	<a href="#modal">modal</a>
 	<h4>Help</h4>
@@ -322,6 +323,32 @@ hnoss.focus_order(ui, {&amp;save, &amp;cancel})
     load_weather(cities[city.selected])
 }</code></pre>
 <p>Theme: <code>button</code>, <code>button_focused</code> for the field; <code>modal</code>, <code>border_focused</code>, <code>selected</code> for the options. Calling <code>widgets.begin</code> yourself (without <code>hnoss.ui</code>)? Call <code>widgets.end(ui)</code> before rendering, or the options aren't drawn.</p>
+</div>
+
+<h2 id="slider">slider · number_input</h2>
+<div class="widget">
+<div class="sig">slider :: proc(ui: ^Ui, area: Rect, value: ^f64, min_value, max_value: f64, opts := Slider_Options{}) -&gt; (changed: bool)
+number_input :: proc(ui: ^Ui, area: Rect, state: ^Number_State, opts := Number_Options{}) -&gt; (changed: bool)</div>
+<p>A <b>slider</b> is a track on the first row of <code>area</code> with a knob that sits on a step from <code>min_value</code>; the range's end is always reachable. The <code>^f64</code> is the state and the identity for focus. A <b>number_input</b> is a one-line field with <code>−</code> <code>+</code> at its end: it takes only keys that keep it a number (digits, one point when <code>decimals</code> &gt; 0, a leading minus when it can go below zero), and the text becomes <code>state.value</code>, rounded and clamped, on <kbd>Enter</kbd>, a step, or when it loses focus. It needs no destroy.</p>
+<img src="widgets/slider.svg" alt="slider and number_input">
+<p class="keys">Slider (focused): <kbd>←</kbd> <kbd>→</kbd> (<kbd>h</kbd> <kbd>l</kbd>) a step · <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd> ten · <kbd>Home</kbd> <kbd>End</kbd> the ends · press, drag, wheel. <kbd>↑</kbd> <kbd>↓</kbd> are left for the app.<br>
+Number (focused): <kbd>↑</kbd> <kbd>↓</kbd> a step · <kbd>PgUp</kbd> <kbd>PgDn</kbd> ten · the <a href="#input">input</a>'s editing keys · <kbd>Enter</kbd> sets <code>state.submitted</code> · <kbd>Esc</kbd> puts the value back · click <code>−</code> <code>+</code>, wheel.</p>
+<table class="ref">
+<tr><th>Slider_Options</th><th></th></tr>
+<tr><td><code>step</code></td><td>what one key press moves (<code>0</code>: a hundredth of the range)</td></tr>
+<tr><td><code>show_value</code> · <code>format</code></td><td>the value after the track · a <code>fmt</code> format for it, e.g. <code>"%.0f%%"</code> (default: the step's decimals)</td></tr>
+<tr><th>Number_Options</th><th></th></tr>
+<tr><td><code>min</code> · <code>max</code></td><td><code>Maybe(f64)</code>, <code>nil</code> = no limit</td></tr>
+<tr><td><code>step</code> · <code>decimals</code></td><td>what <kbd>↑</kbd> <kbd>↓</kbd> add (<code>0</code>: 1) · digits after the point (<code>0</code>: whole numbers)</td></tr>
+</table>
+<pre><code>volume := 60.0
+guests := hnoss.Number_State{value = 4}
+hnoss.focus_order(ui, {&amp;volume, &amp;guests})
+hnoss.slider(ui, row1, &amp;volume, 0, 100, {step = 5, show_value = <span class="k">true</span>, format = <span class="s">"%.0f%%"</span>})
+<span class="k">if</span> hnoss.number_input(ui, row2, &amp;guests, {min = 1, max = 20}) {
+    reprice(int(guests.value))
+}</code></pre>
+<p>Theme: slider <code>accent</code> (filled part), <code>muted</code> (the rest), <code>selected</code> (the knob while focused); number <code>input</code>, <code>muted</code> for the buttons.</p>
 </div>
 
 <h2 id="modal">modal</h2>
