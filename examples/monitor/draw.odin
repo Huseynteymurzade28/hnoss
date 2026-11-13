@@ -22,10 +22,10 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, app: ^App) -> bool {
 	header(ui, hnoss.cut_top(&area, 1), app, pal)
 	footer(ui, hnoss.cut_bottom(&area, 1), app, pal)
 
-	rows := hnoss.split(area, .Vertical, {hnoss.percent(44), hnoss.fill()})
-	top := hnoss.split(rows[0], .Horizontal, {hnoss.fill(3), hnoss.fill(2)})
-	bottom := hnoss.split(rows[1], .Horizontal, {hnoss.percent(36), hnoss.fill()})
-	left := hnoss.split(bottom[0], .Vertical, {hnoss.fill(), 7})
+	rows := hnoss.split(area, .Vertical, [?]hnoss.Size{hnoss.percent(44), hnoss.fill()})
+	top := hnoss.split(rows[0], .Horizontal, [?]hnoss.Size{hnoss.fill(3), hnoss.fill(2)})
+	bottom := hnoss.split(rows[1], .Horizontal, [?]hnoss.Size{hnoss.percent(36), hnoss.fill()})
+	left := hnoss.split(bottom[0], .Vertical, [?]hnoss.Size{hnoss.fill(), 7})
 
 	cpu_panel(ui, top[0], &app.sys, pal)
 	mem_panel(ui, top[1], &app.sys, pal)
@@ -116,7 +116,7 @@ mem_panel :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, s: ^System, pal: ^Palette) {
 net_panel :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, s: ^System, pal: ^Palette) {
 	inner := hnoss.box(ui, r, "[b]Network[/]")
 	if inner.height < 2 { return }
-	halves := hnoss.split(inner, .Vertical, {hnoss.fill(), hnoss.fill()})
+	halves := hnoss.split(inner, .Vertical, [?]hnoss.Size{hnoss.fill(), hnoss.fill()})
 
 	// One scale for both directions so they can be compared.
 	shown := min(len(s.rx_hist), inner.width * 2)

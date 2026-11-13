@@ -30,7 +30,7 @@ main :: proc() {
 		footer := hnoss.cut_bottom(&area, 1)
 		hnoss.label(ui, footer, "[dim]Tab focus · Enter submit · Esc quit[/]")
 		hnoss.focus_order(ui, {&name, &pass})
-		rows := hnoss.split(area, .Vertical, {3, 3, hnoss.fill()}, gap = 1)
+		rows := hnoss.split(area, .Vertical, [?]hnoss.Size{3, 3, hnoss.fill()}, gap = 1)
 		f1 := hnoss.box(ui, rows[0], "Name", {focused = hnoss.focused(ui, &name)})
 		hnoss.input(ui, f1, &name, {placeholder = "Adınız…"})
 		f2 := hnoss.box(ui, rows[1], "Password", {focused = hnoss.focused(ui, &pass)})

@@ -44,7 +44,7 @@ main :: proc() {
 		footer := hnoss.cut_bottom(&area, 1)
 		hnoss.key_hints(ui, footer, {{"Space", "resume" if paused else "pause"}, {"q", "quit"}})
 
-		rows := hnoss.split(area, .Vertical, {hnoss.fill(), len(cities) + 2}, gap = 1)
+		rows := hnoss.split(area, .Vertical, [?]hnoss.Size{hnoss.fill(), len(cities) + 2}, gap = 1)
 
 		monthly: [12]hnoss.Bar
 		for &b, i in monthly {

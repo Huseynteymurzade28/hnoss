@@ -232,10 +232,10 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, st: ^State, t, total: f64) {
 	hnoss.cut_top(&area, 1)
 
 	footer := hnoss.cut_bottom(&area, 3)
-	rows := hnoss.split(area, .Vertical, {hnoss.fill(5), hnoss.fill(4)}, gap = 0)
+	rows := hnoss.split(area, .Vertical, [?]hnoss.Size{hnoss.fill(5), hnoss.fill(4)}, gap = 0)
 
 	// Row 1: plasma, torus, services.
-	top := hnoss.split(rows[0], .Horizontal, {hnoss.fill(3), hnoss.fill(3), hnoss.fill(3)}, gap = 1)
+	top := hnoss.split(rows[0], .Horizontal, [?]hnoss.Size{hnoss.fill(3), hnoss.fill(3), hnoss.fill(3)}, gap = 1)
 	pl := hnoss.box(ui, top[0], "[b]Plasma[/] [#6d868c]truecolor ▀ half-blocks[/]")
 	plasma(ui, pl, total)
 	tr := hnoss.box(ui, top[1], "[b]Torus[/] [#6d868c]braille canvas, 2×4 dots/cell[/]")
@@ -243,12 +243,12 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, st: ^State, t, total: f64) {
 	services(ui, top[2], st, t)
 
 	// Row 2: graph with tabs, regions table.
-	mid := hnoss.split(rows[1], .Horizontal, {hnoss.fill(5), hnoss.fill(4)}, gap = 1)
+	mid := hnoss.split(rows[1], .Horizontal, [?]hnoss.Size{hnoss.fill(5), hnoss.fill(4)}, gap = 1)
 	charts(ui, mid[0], st)
 	regions(ui, mid[1], st)
 
 	// Footer: the command line and gauges.
-	cmd := hnoss.split(footer, .Horizontal, {hnoss.fill(5), hnoss.fill(4)}, gap = 1)
+	cmd := hnoss.split(footer, .Horizontal, [?]hnoss.Size{hnoss.fill(5), hnoss.fill(4)}, gap = 1)
 	cl := hnoss.box(ui, cmd[0], "[b]Command[/] [#6d868c]typed + pasted, grapheme-aware[/]", {focused = hnoss.focused(ui, &st.command)})
 	hnoss.label(ui, hnoss.cut_left(&cl, 2), "[#f08a6a]❯[/]")
 	hnoss.input(ui, cl, &st.command, {placeholder = "waiting for input…"})
@@ -446,7 +446,7 @@ regions :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, st: ^State) {
 }
 
 gauges :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, t: f64) {
-	g := hnoss.split(r, .Horizontal, {hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 1)
+	g := hnoss.split(r, .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 1)
 	values := [3]f64{0.5 + 0.35 * math.sin(t * 1.1), 0.62 + 0.12 * math.sin(t * 0.4 + 1), 0.3 + 0.25 * math.sin(t * 2.3) * math.sin(t * 0.5)}
 	names := [3]string{"CPU", "Memory", "GPU"}
 	for i in 0 ..< 3 {

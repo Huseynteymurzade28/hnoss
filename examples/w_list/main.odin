@@ -29,7 +29,7 @@ main :: proc() {
 		footer := hnoss.cut_bottom(&area, 1)
 		hnoss.label(ui, footer, "[dim]type to filter · ↑↓ PgUp PgDn · Enter · click · wheel · Esc quit[/]")
 		hnoss.focus(ui, &st)
-		cols := hnoss.split(area, .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 1)
+		cols := hnoss.split(area, .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill()}, gap = 1)
 		inner := hnoss.box(ui, cols[0], "🇦🇿 [b]Cities[/]", {focused = true})
 		hnoss.list(ui, inner, items[:], &st, {scrollbar = true, filter = true})
 		if st.activated {

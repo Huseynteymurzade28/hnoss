@@ -33,7 +33,7 @@ main :: proc() {
 		hnoss.label(ui, hnoss.cut_top(&inner, 2), "Save changes to [b]şəhərlər.txt[/]?")
 		hnoss.label(ui, hnoss.cut_bottom(&inner, 1), fmt.tprintf("[dim]%s[/]", status))
 		row := hnoss.cut_top(&inner, 1)
-		cols := hnoss.split(row, .Horizontal, {hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 2)
+		cols := hnoss.split(row, .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 2)
 		if hnoss.button(ui, cols[0], "Save", &save) { status = "Saved." }
 		if hnoss.button(ui, cols[1], "[red]Discard[/]", &discard) { status = "Discarded." }
 		if hnoss.button(ui, cols[2], "Cancel", &cancel) { status = "Cancelled." }

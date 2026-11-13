@@ -56,8 +56,8 @@ draw :: proc(f: ^hnoss.Frame, gap: int, dialog: bool) {
 	panel(f, sidebar, "sidebar\ncut_left(&area, 26)", .Magenta)
 
 	// Split: proportional rows, then columns inside the first row.
-	rows := hnoss.split(area, .Vertical, {hnoss.percent(40), hnoss.fill(), 3}, gap = gap)
-	cols := hnoss.split(rows[0], .Horizontal, {hnoss.fill(2), hnoss.fill(1)}, gap = gap)
+	rows := hnoss.split(area, .Vertical, [?]hnoss.Size{hnoss.percent(40), hnoss.fill(), 3}, gap = gap)
+	cols := hnoss.split(rows[0], .Horizontal, [?]hnoss.Size{hnoss.fill(2), hnoss.fill(1)}, gap = gap)
 	panel(f, cols[0], "fill(2)", .Green)
 	panel(f, cols[1], "fill(1)", .Cyan)
 	panel(f, rows[2], "3 cells", .Yellow)

@@ -29,7 +29,7 @@ main :: proc() {
 
 		elapsed := time.tick_since(start)
 		inner := hnoss.box(ui, hnoss.cut_top(&area, 6), "Spinners")
-		rows := hnoss.split(inner, .Vertical, {1, 1, 1, 1})
+		rows := hnoss.split(inner, .Vertical, [?]hnoss.Size{1, 1, 1, 1})
 		hnoss.spinner(ui, rows[0], elapsed, "Resolving [b]dependencies[/]")
 		hnoss.spinner(ui, rows[1], elapsed, "Compiling [cyan]hnoss[/] [dim](line)[/]", {kind = .Line})
 		hnoss.spinner(ui, rows[2], elapsed, "Fetching [yellow]index[/] [dim](arc)[/]", {kind = .Arc, style = hnoss.Style{fg = .Yellow}})

@@ -31,7 +31,7 @@ main :: proc() {
 		t += 0.15
 		append(&data, 50 + 30 * math.sin(t) + 15 * math.sin(t * 3.7) + 5 * math.cos(t * 11))
 		if len(data) > 1000 { remove_range(&data, 0, 500) }
-		rows := hnoss.split(area, .Vertical, {3, hnoss.fill()}, gap = 1)
+		rows := hnoss.split(area, .Vertical, [?]hnoss.Size{3, hnoss.fill()}, gap = 1)
 		hnoss.sparkline(ui, hnoss.box(ui, rows[0], "one row"), data[:], max_value = 100)
 		hnoss.sparkline(ui, hnoss.box(ui, rows[1], fmt.tprintf("%d rows · latest [b]%.0f[/]", rows[1].height - 2, data[len(data) - 1])), data[:], max_value = 100, st = hnoss.Style{fg = .Green})
 		for ev in hnoss.unhandled(ui) {

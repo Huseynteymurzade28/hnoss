@@ -27,7 +27,7 @@ main :: proc() {
 		footer := hnoss.cut_bottom(&area, 1)
 		hnoss.label(ui, footer, "[dim]q quit[/]")
 		t += 0.01
-		rows := hnoss.split(area, .Vertical, {3, 3, 3, hnoss.fill()}, gap = 1)
+		rows := hnoss.split(area, .Vertical, [?]hnoss.Size{3, 3, 3, hnoss.fill()}, gap = 1)
 		cpu := (math.sin(t * 2) + 1) / 2
 		hnoss.gauge(ui, hnoss.box(ui, rows[0], "CPU"), cpu)
 		disk := math.mod(t / 4, 1.0)
