@@ -6,6 +6,10 @@ Ui :: widgets.Ui
 Theme :: widgets.Theme
 Border :: widgets.Border
 DEFAULT_THEME :: widgets.DEFAULT_THEME
+LIGHT_THEME :: widgets.LIGHT_THEME
+HIGH_CONTRAST_THEME :: widgets.HIGH_CONTRAST_THEME
+ODLAR_YURDU_THEME :: widgets.ODLAR_YURDU_THEME
+XEZER_THEME :: widgets.XEZER_THEME
 Cursor :: widgets.Cursor
 Cursor_Shape :: widgets.Cursor_Shape
 

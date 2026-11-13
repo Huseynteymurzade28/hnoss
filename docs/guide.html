@@ -216,7 +216,20 @@ t.border_focused = {fg = hnoss.hex(0x5fc4c9)}
 t.selected       = {fg = .Black, bg = hnoss.hex(0x5fc4c9), add = {.Bold}}
 t.header         = {fg = hnoss.hex(0xf08a6a), add = {.Bold}}
 ui := hnoss.ui(f, events, t)</code></pre>
-<p>Fields: <code>text muted accent border border_focused title selected selected_unfocused header gauge_filled gauge_empty tab tab_selected input scrollbar_track scrollbar_thumb</code>, plus <code>border_kind</code>.</p>
+<p>Fields: <code>background text muted accent border border_focused title selected selected_unfocused header gauge_filled gauge_empty tab tab_selected input check button button_focused button_pressed modal scrollbar_track scrollbar_thumb key match</code>, plus <code>border_kind</code>. <code>background</code>, when set, fills the whole frame before any widget is drawn.</p>
+
+<h3 id="presets">Built-in themes</h3>
+<p>Besides <code>DEFAULT_THEME</code>, which uses the terminal's own colors, four presets ship with the library. They set <code>background</code>, so they look the same whatever the terminal's palette is. Start from one and change what you like, or try them all with <code>./build.sh run themes</code> (<kbd>t</kbd> switches).</p>
+<div class="themes">
+<figure><img src="themes/default.svg" alt="default theme"><figcaption><code>DEFAULT_THEME</code></figcaption></figure>
+<figure><img src="themes/light.svg" alt="light theme"><figcaption><code>LIGHT_THEME</code></figcaption></figure>
+<figure><img src="themes/high_contrast.svg" alt="high-contrast theme"><figcaption><code>HIGH_CONTRAST_THEME</code>: only the 16 named colors, so it is the same in every color depth</figcaption></figure>
+<figure><img src="themes/odlar_yurdu.svg" alt="Odlar Yurdu theme"><figcaption><code>ODLAR_YURDU_THEME</code>: the Land of Fire</figcaption></figure>
+<figure><img src="themes/xezer.svg" alt="Xəzər theme"><figcaption><code>XEZER_THEME</code>: the Caspian</figcaption></figure>
+</div>
+<pre><code>t := hnoss.LIGHT_THEME
+t.border_kind = .Plain
+ui := hnoss.ui(f, events, t)</code></pre>
 
 <h2 id="memory">Memory</h2>
 <ul>

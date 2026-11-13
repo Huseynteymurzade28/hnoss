@@ -1691,3 +1691,36 @@ widget_number_input_decimals :: proc(t: ^testing.T) {
 	widgets.number_input(ui, ui.area, &m, {min = 0})
 	expect_rows(t, screen_rows(&hs.buf), "03     − +")
 }
+
+@(test)
+widget_theme_background :: proc(t: ^testing.T) {
+	// The default theme leaves the terminal's own background alone.
+	hs := harness(4, 2)
+	widgets.begin(&hs.buf, nil, &hs.mem, &hs.cursor)
+	testing.expect_value(t, buffer.get(&hs.buf, 3, 1).bg, nil)
+
+	// A preset fills the whole frame first, so widgets draw on its color.
+	widgets.begin(&hs.buf, nil, &hs.mem, &hs.cursor, widgets.LIGHT_THEME)
+	bg := widgets.LIGHT_THEME.background.bg
+	testing.expect(t, bg != nil)
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).bg, bg)
+	testing.expect_value(t, buffer.get(&hs.buf, 3, 1).bg, bg)
+	testing.expect_value(t, buffer.get(&hs.buf, 3, 1).fg, widgets.LIGHT_THEME.background.fg)
+
+	// High contrast uses only the 16 named colors, so no depth changes it.
+	ok := true
+	check :: proc(st: style.Style, ok: ^bool) {
+		for c in ([2]style.Color{st.fg, st.bg}) {
+			if c == nil { continue }
+			if _, named := c.(style.Named_Color); !named { ok^ = false }
+		}
+	}
+	th := widgets.HIGH_CONTRAST_THEME
+	for st in ([?]style.Style{th.background, th.text, th.muted, th.accent, th.border, th.border_focused,
+		th.title, th.selected, th.selected_unfocused, th.header, th.gauge_filled, th.gauge_empty,
+		th.tab, th.tab_selected, th.input, th.check, th.button, th.button_focused, th.button_pressed,
+		th.modal, th.scrollbar_track, th.scrollbar_thumb, th.key, th.match}) {
+		check(st, &ok)
+	}
+	testing.expect(t, ok, "HIGH_CONTRAST_THEME uses a color that isn't a Named_Color")
+}

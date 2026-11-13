@@ -20,10 +20,11 @@ Palette :: struct {
 
 palettes :: proc() -> [4]Palette {
 	return {
+		// The first two are the library's own themes; the gradients are the monitor's.
 		make_palette("Odlar Yurdu", 0x140906, 0xf6e3d4, 0x9a6a55, 0x3a1d14, 0x6b3020, 0xff8c42,
-			ODLAR_LOGO[:], ODLAR_CPU[:], ODLAR_MEM[:], ODLAR_RX[:], ODLAR_TX[:]),
+			ODLAR_LOGO[:], ODLAR_CPU[:], ODLAR_MEM[:], ODLAR_RX[:], ODLAR_TX[:], hnoss.ODLAR_YURDU_THEME),
 		make_palette("Xəzər", 0x06141f, 0xdff3fb, 0x5f8aa0, 0x12303f, 0x1f5168, 0x4cc9f0,
-			XEZER_LOGO[:], XEZER_CPU[:], XEZER_MEM[:], XEZER_RX[:], XEZER_TX[:]),
+			XEZER_LOGO[:], XEZER_CPU[:], XEZER_MEM[:], XEZER_RX[:], XEZER_TX[:], hnoss.XEZER_THEME),
 		make_palette("Aurora", 0x0c0f16, 0xe6e9ef, 0x6c7486, 0x1c2230, 0x2e3546, 0xa6e3a1,
 			AURORA_LOGO[:], AURORA_CPU[:], AURORA_MEM[:], AURORA_RX[:], AURORA_TX[:]),
 		make_palette("Mono", 0, 0xdddddd, 0x808080, 0x303030, 0x505050, 0xffffff,
@@ -32,9 +33,13 @@ palettes :: proc() -> [4]Palette {
 }
 
 @(private = "file")
-make_palette :: proc(name: string, bg, text, dim, track, frame, accent: u32, logo, cpu, mem, rx, tx: []hnoss.Rgb) -> Palette {
+make_palette :: proc(name: string, bg, text, dim, track, frame, accent: u32, logo, cpu, mem, rx, tx: []hnoss.Rgb, theme: Maybe(hnoss.Theme) = nil) -> Palette {
 	A, T, D, F := hnoss.hex(accent), hnoss.hex(text), hnoss.hex(dim), hnoss.hex(frame)
 	B: hnoss.Color = hnoss.hex(bg) if bg != 0 else nil
+	if t, ok := theme.?; ok {
+		return {name = name, ui = t, bg = B, text = T, dim = D, track = hnoss.hex(track),
+			logo = logo, cpu = cpu, mem = mem, rx = rx, tx = tx}
+	}
 	ui := hnoss.DEFAULT_THEME
 	ui.text = {fg = T}
 	ui.muted = {fg = D}

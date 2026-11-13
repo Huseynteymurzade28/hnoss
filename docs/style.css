@@ -94,6 +94,11 @@ section.band > p.lead { color: var(--dim); margin: 0 0 26px; }
 .tile p { margin: 0; color: var(--dim); font-size: 14px; }
 .tile code { font-size: 13px; }
 
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin: 18px 0; }
+.themes figure { margin: 0; }
+.themes img { width: 100%; display: block; border-radius: var(--radius); border: 1px solid var(--line); }
+.themes figcaption { color: var(--dim); font-size: 13px; margin-top: 6px; }
+
 /* ---------- docs pages ---------- */
 .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); max-width: 1200px; margin: 0 auto; }
 .side { position: sticky; top: 58px; align-self: start; height: calc(100vh - 58px); overflow: auto; padding: 28px 18px 40px 28px; border-right: 1px solid var(--line); }

@@ -92,6 +92,9 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 	}
 	mem.modal = nil
 	mem.popup = nil
+	if theme.background != {} {
+		buffer.fill(buf, buf.area, theme.background)
+	}
 	return ui
 }
 
