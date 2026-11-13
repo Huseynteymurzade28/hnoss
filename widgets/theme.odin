@@ -43,6 +43,12 @@ Theme :: struct {
 	scrollbar_thumb:    Style,
 	key:                Style, // a key in key_hints / key_help
 	match:              Style, // the characters a filtered list matched
+
+	// What a message is about: toasts color their border and icon with these.
+	info:               Style,
+	success:            Style,
+	warning:            Style,
+	error:              Style,
 }
 
 DEFAULT_THEME :: Theme {
@@ -75,6 +81,11 @@ DEFAULT_THEME :: Theme {
 	scrollbar_thumb    = {fg = .Cyan},
 	key                = {fg = .Cyan, add = {.Bold}},
 	match              = {add = {.Bold, .Underlined}},
+
+	info               = {fg = .Blue},
+	success            = {fg = .Green},
+	warning            = {fg = .Yellow, add = {.Bold}},
+	error              = {fg = .Red, add = {.Bold}},
 }
 
 // The presets below all fill the frame with their background, so they
@@ -112,6 +123,11 @@ ODLAR_YURDU_THEME :: Theme {
 	scrollbar_thumb    = {fg = ODLAR_ACCENT},
 	key                = {fg = ODLAR_ACCENT, add = {.Bold}},
 	match              = {fg = ODLAR_ACCENT, add = {.Bold, .Underlined}},
+
+	info               = {fg = style.Rgb{0x8e, 0xca, 0xe6}},
+	success            = {fg = style.Rgb{0x95, 0xd5, 0xb2}},
+	warning            = {fg = style.Rgb{0xff, 0xd1, 0x66}, add = {.Bold}},
+	error              = {fg = style.Rgb{0xe6, 0x39, 0x46}, add = {.Bold}},
 }
 
 // "Xəzər", the Caspian: shallow teal on deep blue.
@@ -146,6 +162,11 @@ XEZER_THEME :: Theme {
 	scrollbar_thumb    = {fg = XEZER_ACCENT},
 	key                = {fg = XEZER_ACCENT, add = {.Bold}},
 	match              = {fg = XEZER_ACCENT, add = {.Bold, .Underlined}},
+
+	info               = {fg = XEZER_ACCENT},
+	success            = {fg = style.Rgb{0x80, 0xff, 0xdb}},
+	warning            = {fg = style.Rgb{0xff, 0xd1, 0x66}, add = {.Bold}},
+	error              = {fg = style.Rgb{0xff, 0x6b, 0x6b}, add = {.Bold}},
 }
 
 // Dark text on near-white, with a blue accent.
@@ -180,6 +201,11 @@ LIGHT_THEME :: Theme {
 	scrollbar_thumb    = {fg = LIGHT_ACCENT},
 	key                = {fg = LIGHT_ACCENT, add = {.Bold}},
 	match              = {fg = LIGHT_ACCENT, add = {.Bold, .Underlined}},
+
+	info               = {fg = LIGHT_ACCENT},
+	success            = {fg = style.Rgb{0x1a, 0x7f, 0x37}},
+	warning            = {fg = style.Rgb{0x9a, 0x67, 0x00}, add = {.Bold}},
+	error              = {fg = style.Rgb{0xcf, 0x22, 0x2e}, add = {.Bold}},
 }
 
 // Bright white and yellow on black, from the 16 named colors only, so it
@@ -216,6 +242,11 @@ HIGH_CONTRAST_THEME :: Theme {
 	scrollbar_thumb    = {fg = .Bright_Yellow},
 	key                = {fg = .Bright_Yellow, add = {.Bold}},
 	match              = {fg = .Bright_Yellow, add = {.Bold, .Underlined}},
+
+	info               = {fg = .Bright_Cyan},
+	success            = {fg = .Bright_Green},
+	warning            = {fg = .Bright_Yellow, add = {.Bold}},
+	error              = {fg = .Bright_Red, add = {.Bold}},
 }
 
 @(private) ODLAR_BG     :: style.Rgb{0x14, 0x09, 0x06}

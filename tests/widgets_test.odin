@@ -1724,3 +1724,123 @@ widget_theme_background :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, ok, "HIGH_CONTRAST_THEME uses a color that isn't a Named_Color")
 }
+
+@(private = "file")
+at_ms :: proc(ms: int) -> time.Tick {
+	return time.Tick{_nsec = i64(ms) * 1_000_000 + 1_000_000_000_000}
+}
+
+@(test)
+widget_toast :: proc(t: ^testing.T) {
+	hs := harness(30, 10)
+	ui := frame(hs)
+	ui.now = at_ms(0)
+	widgets.toast(ui, "Saved notes.txt", .Success)
+	widgets.toast(ui, "Disk almost full", .Warning, 2 * time.Second)
+	widgets.end(ui)
+	// Top-right, a cell from the edges, oldest on top.
+	expect_screen(t, &hs.buf, `
+
+		          ╭─────────────────╮
+		          │✓ Saved notes.txt│
+		          ╰─────────────────╯
+		         ╭──────────────────╮
+		         │! Disk almost full│
+		         ╰──────────────────╯
+	`)
+	testing.expect_value(t, buffer.get(&hs.buf, 11, 2).fg, widgets.DEFAULT_THEME.success.fg)
+
+	// Waits: 16 ms while sliding, else until the next one expires.
+	testing.expect_value(t, widgets.toast_timeout(&hs.mem, at_ms(500), -1), 1501)
+	testing.expect_value(t, widgets.toast_timeout(&hs.mem, at_ms(500), 100), 100)
+
+	// A click on one dismisses it and doesn't reach what is under it.
+	hs2 := harness(30, 10)
+	ui = frame(hs2)
+	ui.now = at_ms(0)
+	widgets.toast(ui, "one")
+	widgets.toast(ui, "two")
+	widgets.end(ui)
+	under := false
+	ui = frame(hs2, click(25, 2))
+	ui.now = at_ms(10)
+	testing.expect(t, !widgets.checkbox(ui, {20, 2, 10, 1}, "x", &under))
+	widgets.end(ui)
+	testing.expect_value(t, hs2.mem.toasts.count, 1)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+
+	// "two" slides up into the empty place, a little each frame.
+	testing.expect(t, widgets.toast_timeout(&hs2.mem, at_ms(10), -1) == 16)
+	rows := screen_rows(&hs2.buf)
+	testing.expect(t, rows[4] != "" , "the toast is still on its way up")
+	for ms := 26; ms < 1000; ms += 16 {
+		ui = frame(hs2)
+		ui.now = at_ms(ms)
+		widgets.end(ui)
+	}
+	expect_screen(t, &hs2.buf, `
+
+		                 ╭──────────╮
+		                 │• two     │
+		                 ╰──────────╯
+	`)
+
+	// And everything expires.
+	ui = frame(hs2)
+	ui.now = at_ms(4000)
+	widgets.end(ui)
+	testing.expect_value(t, hs2.mem.toasts.count, 0)
+	testing.expect_value(t, widgets.toast_timeout(&hs2.mem, at_ms(4000), -1), -1)
+	expect_screen(t, &hs2.buf, ``)
+}
+
+@(test)
+widget_toast_limits :: proc(t: ^testing.T) {
+	hs := harness(30, 12)
+	ui := frame(hs)
+	ui.now = at_ms(0)
+	for i in 0 ..< widgets.MAX_TOASTS + 2 {
+		widgets.toast(ui, "first" if i == 0 else "x")
+	}
+	testing.expect_value(t, hs.mem.toasts.count, widgets.MAX_TOASTS)
+	widgets.end(ui)
+	// The oldest two went; of the six left only three fit (3 rows each,
+	// from row 1), the rest wait below the screen's edge.
+	rows := screen_rows(&hs.buf)
+	testing.expect_value(t, rows[2], "                 │• x       │")
+	testing.expect_value(t, rows[9], "                 ╰──────────╯")
+	testing.expect_value(t, rows[10], "")
+	testing.expect_value(t, hs.mem.toasts.items[3].area, widgets.Rect{}) // not clickable either
+
+	// Long text wraps (up to 4 lines) in a box at most 44 cells wide.
+	hs = harness(60, 12)
+	ui = frame(hs)
+	ui.now = at_ms(0)
+	widgets.toast(ui, "The connection to the server was lost; trying again in five seconds", .Error)
+	widgets.end(ui)
+	expect_screen(t, &hs.buf, `
+
+		               ╭──────────────────────────────────────────╮
+		               │✗ The connection to the server was lost;  │
+		               │  trying again in five seconds            │
+		               ╰──────────────────────────────────────────╯
+	`)
+
+	// Text past TOAST_MAX_LEN bytes is cut at a character, not inside one.
+	long: [widgets.TOAST_MAX_LEN + 1]u8
+	for &b in long { b = 'a' }
+	s := string(long[:])
+	s2 := [2]string{s[:widgets.TOAST_MAX_LEN - 1], "ə"} // ə is 2 bytes, crossing the limit
+	ui = frame(hs)
+	widgets.toast(ui, fmt_concat(s2[:]))
+	last := hs.mem.toasts.items[hs.mem.toasts.count - 1]
+	testing.expect_value(t, last.len, widgets.TOAST_MAX_LEN - 1)
+}
+
+@(private = "file")
+fmt_concat :: proc(parts: []string) -> string {
+	out: [dynamic]u8
+	out.allocator = context.temp_allocator
+	for p in parts { append(&out, p) }
+	return string(out[:])
+}

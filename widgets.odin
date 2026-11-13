@@ -1,5 +1,6 @@
 package hnoss
 
+import "core:time"
 import "widgets"
 
 Ui :: widgets.Ui
@@ -97,4 +98,15 @@ Select_State :: widgets.Select_State
 Select_Options :: widgets.Select_Options
 Button_State :: widgets.Button_State
 modal :: widgets.modal
+toast :: widgets.toast
+Toast_Kind :: widgets.Toast_Kind
+
+// How long to wait for input so toasts on screen still slide and expire
+// on time: `wait_ms` when there are none, otherwise at most that (-1: no
+// limit of your own).
+//
+//	events = hnoss.poll_events(&term, hnoss.toast_timeout(&term, -1))
+toast_timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
+	return widgets.toast_timeout(&t.widget_memory, time.tick_now(), wait_ms)
+}
 Graph_Options :: widgets.Graph_Options

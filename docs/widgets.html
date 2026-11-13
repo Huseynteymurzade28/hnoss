@@ -49,6 +49,7 @@
 	<a href="#slider">slider · number_input</a>
 	<h4>Overlays</h4>
 	<a href="#modal">modal</a>
+	<a href="#toast">toast</a>
 	<h4>Help</h4>
 	<a href="#key_hints">key_hints · key_help</a>
 </aside>
@@ -365,6 +366,23 @@ hnoss.slider(ui, row1, &amp;volume, 0, 100, {step = 5, show_value = <span class=
     <span class="k">if</span> hnoss.button(ui, cols[1], <span class="s">"Delete"</span>, &amp;ok)     { remove(); confirm = <span class="k">false</span> }
 }</code></pre>
 <p>Theme: <code>modal</code> for the inside; the border uses <code>border_focused</code>.</p>
+</div>
+
+<h2 id="toast">toast</h2>
+<div class="widget">
+<div class="sig">toast :: proc(ui: ^Ui, message: string, kind := Toast_Kind.Info, duration: time.Duration = 0)
+Toast_Kind :: enum { Info, Success, Warning, Error }
+toast_timeout :: proc(t: ^Terminal, wait_ms: int) -&gt; int</div>
+<p>A short markup message in the top-right corner, drawn over everything (by <code>end_frame</code>, after the other widgets and any open <a href="#select">select</a>). It goes away by itself after <code>duration</code> (<code>0</code>: 4 s, warnings 6 s, errors 8 s). Several stack, oldest on top, and slide up when one goes away; long text wraps, up to four lines in a box at most 44 cells wide. Clicking a toast dismisses it, and the click doesn't reach the widget under it. Call it on any frame, from anywhere: the toasts live in the terminal's widget memory (at most <code>MAX_TOASTS</code>, a new one drops the oldest), so there is no state to keep or free.</p>
+<p>They expire and slide without any input, so let them wake the loop: wait with <code>toast_timeout</code>, which returns your own timeout when no toasts are showing.</p>
+<img src="widgets/toast.svg" alt="toast">
+<pre><code><span class="k">if</span> hnoss.button(ui, row, <span class="s">"Save"</span>, &amp;save) {
+    <span class="k">if</span> write_file() { hnoss.toast(ui, <span class="s">"Saved [b]notes.txt[/]"</span>, .Success) }
+    <span class="k">else</span>            { hnoss.toast(ui, <span class="s">"Couldn't save notes.txt"</span>, .Error) }
+}
+...
+events = hnoss.poll_events(&amp;term, hnoss.toast_timeout(&amp;term, -1))</code></pre>
+<p>Theme: <code>info</code>, <code>success</code>, <code>warning</code>, <code>error</code> for the border and icon; <code>modal</code> inside, <code>text</code> for the message.</p>
 </div>
 
 <h2 id="key_hints">key_hints · key_help</h2>

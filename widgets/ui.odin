@@ -1,5 +1,6 @@
 package widgets
 
+import "core:time"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -23,6 +24,7 @@ Ui :: struct {
 	mem:     ^Memory,
 	cursor:  ^Cursor,
 	theme:   Theme,
+	now:     time.Tick,     // when the frame began: toasts and their animation run on it
 	held:    []input.Event, // this frame's events, held back from the widgets under a modal
 
 	// While a popup (a select's options) was open last frame, it gets the
@@ -49,6 +51,7 @@ Memory :: struct {
 	active: rawptr, // widget being dragged with the mouse
 	modal:  ^bool,  // `open` of the modal drawn last frame
 	popup:  ^bool,  // `open` of the popup drawn last frame
+	toasts: Toasts, // the toasts on screen (see `toast`)
 }
 
 // Where to show the terminal's own cursor after this frame (TextInput
@@ -78,7 +81,10 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		mem     = mem,
 		cursor  = cursor,
 		theme   = theme,
+		now     = time.tick_now(),
 	}
+	// Toasts are drawn over everything, so they get the mouse first.
+	toast_clicks(ui, events)
 	// An open popup takes every event, even from inside a modal. While a
 	// modal is open, the widgets drawn before it see no events; `modal`
 	// hands them back.
@@ -99,13 +105,18 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 }
 
 // Finishes this frame's widgets by drawing the overlay layer (an open
-// select's options) over everything else. end_frame calls it for you.
+// select's options), then the toasts, over everything else. end_frame
+// calls it for you.
 end :: proc(ui: ^Ui) {
-	o, ok := ui.overlay.?
-	if !ok {
-		return
+	if o, ok := ui.overlay.?; ok {
+		ui.overlay = nil
+		draw_overlay(ui, o)
 	}
-	ui.overlay = nil
+	draw_toasts(ui)
+}
+
+@(private)
+draw_overlay :: proc(ui: ^Ui, o: Overlay) {
 	clip := buffer.set_clip(ui.buf, ui.buf.area) // not cut by a scroll view
 	defer buffer.set_clip(ui.buf, clip)
 	events := ui.events
