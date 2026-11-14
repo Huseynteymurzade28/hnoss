@@ -45,8 +45,8 @@ header :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, app: ^App, pal: ^Palette) {
 		local := timezone.datetime_to_tz(dt, app.tz)
 		clock = fmt.tprintf("%02d:%02d:%02d", local.hour, local.minute, local.second)
 	}
-	info := fmt.tprintf("[#%06x]%s · linux %s · up %s ·[/] [b]%s[/] ",
-		rgb_u32(pal.dim), s.host, s.kernel, human_uptime(s.uptime), clock)
+	info := fmt.tprintf("[#%06x]%s · %s %s · up %s ·[/] [b]%s[/] ",
+		rgb_u32(pal.dim), s.host, OS_NAME, s.kernel, human_uptime(s.uptime), clock)
 	hnoss.label(ui, r, info, align = .Right, wrap = .Clip)
 }
 
