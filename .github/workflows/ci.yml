@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  ODIN_RELEASE: dev-2026-10 # the one place the compiler version is pinned
+  ODIN_RELEASE: dev-2026-10 # Linux/macOS: the one place the compiler version is pinned
 
 jobs:
   build:
@@ -23,3 +23,25 @@ jobs:
           release: ${{ env.ODIN_RELEASE }}
       - run: odin version
       - run: ./build.sh # check + tests + all examples
+
+  freebsd:
+    name: FreeBSD
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      # GitHub has no native FreeBSD runner, so run the whole script in a VM.
+      # The compiler comes from FreeBSD's lang/odin package, which tracks the
+      # latest monthly release rather than ODIN_RELEASE.
+      - name: Build and test in a FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15" # newest 15.x
+          copyback: false
+          prepare: |
+            pkg install -y bash odin-lang
+          run: |
+            uname -a
+            pkg info odin-lang
+            odin version
+            bash ./build.sh # check + tests + all examples
