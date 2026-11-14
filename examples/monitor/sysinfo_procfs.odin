@@ -1,8 +1,10 @@
-#+build linux
+#+build linux, darwin
 package main
 
-// Linux implementation: everything comes from /proc and /sys.
-// References: proc(5) (https://man7.org/linux/man-pages/man5/proc.5.html),
+// The /proc implementation: Linux reads it, and macOS builds this file too.
+// macOS has no /proc, so the monitor runs there with no live stats, as it did
+// before the FreeBSD port. References: proc(5)
+// (https://man7.org/linux/man-pages/man5/proc.5.html),
 // Documentation/hwmon/sysfs-interface.rst for temperatures.
 
 import "core:mem"
@@ -12,7 +14,11 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 
-OS_NAME :: "linux"
+when ODIN_OS == .Darwin {
+	OS_NAME :: "macos"
+} else {
+	OS_NAME :: "linux"
+}
 
 system_init :: proc(s: ^System) {
 	_ = virtual.arena_init_growing(&s.proc_arena)

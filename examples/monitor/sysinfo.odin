@@ -2,9 +2,10 @@ package main
 
 // System statistics for the monitor.
 //
-// Linux reads /proc and /sys. FreeBSD uses the standard sysctl, ps, netstat
-// and swapinfo tools. The platform pieces live in sysinfo_linux.odin and
-// sysinfo_freebsd.odin.
+// Linux reads /proc and /sys, and macOS builds the same reader (with no live
+// stats, since there is no /proc). FreeBSD uses the standard sysctl, ps,
+// netstat and swapinfo tools. The platform pieces live in sysinfo_procfs.odin
+// and sysinfo_freebsd.odin.
 
 import "core:mem/virtual"
 import "core:slice"
