@@ -4,23 +4,34 @@ package backend
 // core:sys/posix covers termios on FreeBSD (with the right layout: tcflag_t
 // is 32-bit here), but not ioctl or struct winsize, so those live here.
 
+import "base:intrinsics"
 import "core:c"
+import "core:sys/freebsd"
 import "core:sys/posix"
 
-// Through libc rather than a raw syscall: libc is the stable interface on
-// FreeBSD.
-foreign import libc "system:c"
+// The terminal ABI pieces from <sys/ttycom.h>, as raw ioctls like the Linux
+// backend: no libc import.
+//
+// The size encoded in TIOCGETA/TIOCSETA is sizeof(struct termios) == 44,
+// which the assert below pins down. tcgetattr(3) and tcsetattr(3) are only
+// wrappers around these two requests.
+TIOCGETA   :: 0x402c7413 // _IOR('t', 19, struct termios)
+TIOCSETA   :: 0x802c7414 // _IOW('t', 20, struct termios)
+TIOCGWINSZ :: 0x40087468 // _IOR('t', 104, struct winsize)
 
+#assert(size_of(posix.termios) == 44)
+
+// core:sys/freebsd has an ioctl wrapper, but it drops the request argument
+// (it calls ioctl(fd, arg)), so the syscall is made directly. FreeBSD's
+// syscall ABI is stable, unlike macOS (see termios_darwin.odin).
 @(private)
-foreign libc {
-	ioctl :: proc(fd: posix.FD, request: c.ulong, #c_vararg args: ..any) -> c.int ---
+ioctl :: proc "contextless" (fd: posix.FD, request: c.ulong, arg: rawptr) -> posix.Errno {
+	res, ok := intrinsics.syscall_bsd(freebsd.SYS_ioctl, uintptr(fd), uintptr(request), uintptr(arg))
+	return ok ? .NONE : cast(posix.Errno)res
 }
 
 // Not POSIX, so posix.Signal has no member for it. sys/signal.h
 SIGWINCH :: posix.Signal(28)
-
-// sys/ttycom.h: _IOR('t', 104, struct winsize)
-TIOCGWINSZ :: 0x40087468
 
 Winsize :: struct {
 	row, col:       u16,

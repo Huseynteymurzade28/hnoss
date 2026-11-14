@@ -34,3 +34,11 @@ make_raw_keeps_unrelated_flags :: proc(t: ^testing.T) {
 	raw := backend.make_raw(cooked)
 	testing.expect_value(t, raw.c_iflag, posix.CInput_Flags{.IXANY})
 }
+
+@(test)
+size_bad_fd_reports_errno :: proc(t: ^testing.T) {
+	b := backend.Backend{fd = -1}
+	_, err := backend.size(&b)
+	testing.expect_value(t, err, backend.Error.Size_Failed)
+	testing.expect_value(t, b.errno, posix.Errno.EBADF)
+}

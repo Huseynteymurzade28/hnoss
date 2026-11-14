@@ -68,8 +68,8 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 	b.fd = fd
 
 	original: posix.termios
-	if posix.tcgetattr(fd, &original) != .OK {
-		return fail(b, .Not_A_Terminal, posix.errno())
+	if errno := ioctl(fd, TIOCGETA, &original); errno != .NONE {
+		return fail(b, .Not_A_Terminal, errno)
 	}
 
 	// core:sys/posix has no pipe2 wrapper: set the flags afterwards.
@@ -97,8 +97,8 @@ init :: proc(b: ^Backend, opts := DEFAULT_OPTIONS, allocator := context.allocato
 
 	install_signal_handlers(b) or_return
 
-	if posix.tcsetattr(fd, .TCSANOW, &g_state.raw) != .OK {
-		return fail(b, .Termios_Failed, posix.errno())
+	if errno := ioctl(fd, TIOCSETA, &g_state.raw); errno != .NONE {
+		return fail(b, .Termios_Failed, errno)
 	}
 
 	write_bytes(b, g_state.enter[:g_state.enter_len])
@@ -134,7 +134,7 @@ restore_terminal :: proc "contextless" () {
 		return
 	}
 	write_all(g_state.fd, g_state.seq[:g_state.seq_len])
-	posix.tcsetattr(g_state.fd, .TCSANOW, &g_state.original)
+	ioctl(g_state.fd, TIOCSETA, &g_state.original)
 }
 
 // Puts back what restore_terminal undid for a stop (see stop_and_resume).
@@ -148,7 +148,7 @@ resume_terminal :: proc "contextless" () {
 	intrinsics.atomic_store(&g_state.active, true)
 	// From a background job this raises SIGTTOU and stops us again until
 	// `fg`, which is what should happen.
-	posix.tcsetattr(g_state.fd, .TCSANOW, &g_state.raw)
+	ioctl(g_state.fd, TIOCSETA, &g_state.raw)
 	write_all(g_state.fd, g_state.enter[:g_state.enter_len])
 	mark_resumed()
 }
@@ -202,8 +202,8 @@ mark_resumed :: proc "contextless" () {
 
 size :: proc(b: ^Backend) -> (Size, Error) {
 	ws: Winsize
-	if ioctl(b.fd, TIOCGWINSZ, &ws) < 0 {
-		return {}, fail(b, .Size_Failed, posix.errno())
+	if errno := ioctl(b.fd, TIOCGWINSZ, &ws); errno != .NONE {
+		return {}, fail(b, .Size_Failed, errno)
 	}
 	// Some environments (serial consoles, odd ptys) report 0x0.
 	if ws.col == 0 || ws.row == 0 {
