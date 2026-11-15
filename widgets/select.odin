@@ -4,6 +4,7 @@ import "../buffer"
 import "../input"
 import "../layout"
 import "../pen"
+import "../style"
 
 Select_State :: struct {
 	selected:  int,  // index of the chosen item
@@ -66,9 +67,11 @@ select :: proc(ui: ^Ui, area: Rect, items: []string, state: ^Select_State, opts 
 	state.highlight = clamp(state.highlight, 0, n - 1)
 	state.offset = clamp(state.offset, 0, max(n - rows.height, 0))
 
+	_, _, hot := hover(ui, state, area)
 	st := ui.theme.button
-	if state.open || focused(ui, state) {
-		st = ui.theme.button_focused
+	switch {
+	case state.open || focused(ui, state): st = ui.theme.button_focused
+	case hot:                              st = style.patch(st, ui.theme.hover)
 	}
 	buffer.fill(ui.buf, area, st)
 	y := area.y + (area.height - 1) / 2

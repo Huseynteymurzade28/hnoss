@@ -26,6 +26,8 @@ ui :: proc(f: ^Frame, events: []Event, theme := DEFAULT_THEME) -> ^Ui {
 
 focus :: widgets.focus
 focused :: widgets.focused
+hover :: widgets.hover
+hovered :: widgets.hovered
 focus_order :: widgets.focus_order
 unhandled :: widgets.unhandled
 

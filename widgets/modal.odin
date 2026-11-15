@@ -24,6 +24,7 @@ modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -> (inner: Rect) {
 		ui.events = ui.held
 		ui.held = nil
 	}
+	if ui.pointer_held == .Modal { ui.pointer_held = .No }
 	ui.cursor.visible = false // a caret under the dialog
 
 	for ev, i in ui.events {

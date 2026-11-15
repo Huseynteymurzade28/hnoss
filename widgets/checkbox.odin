@@ -2,6 +2,7 @@ package widgets
 
 import "../buffer"
 import "../pen"
+import "../style"
 
 // A checkbox: "[✓] label" (markup). Space or Enter toggles while focused,
 // clicking toggles and focuses. `checked` is also the widget's identity
@@ -13,7 +14,8 @@ checkbox :: proc(ui: ^Ui, area: Rect, label: string, checked: ^bool) -> (changed
 	changed = toggled(ui, area, checked)
 	mark := "[✓]" if checked^ else "[ ]"
 	mark_style := ui.theme.check if checked^ else ui.theme.muted
-	draw_choice(ui, area, mark, mark_style, label, focused(ui, checked))
+	_, _, hot := hover(ui, checked, area)
+	draw_choice(ui, area, mark, mark_style, label, focused(ui, checked), hot)
 	return
 }
 
@@ -26,7 +28,8 @@ toggle :: proc(ui: ^Ui, area: Rect, label: string, on: ^bool) -> (changed: bool)
 	changed = toggled(ui, area, on)
 	mark := "━━●" if on^ else "●━━"
 	mark_style := ui.theme.check if on^ else ui.theme.muted
-	draw_choice(ui, area, mark, mark_style, label, focused(ui, on))
+	_, _, hot := hover(ui, on, area)
+	draw_choice(ui, area, mark, mark_style, label, focused(ui, on), hot)
 	return
 }
 
@@ -70,12 +73,13 @@ radio :: proc(ui: ^Ui, area: Rect, options: []string, selected: ^int) -> (change
 	selected^ = clamp(selected^, 0, n - 1)
 
 	has_focus := focused(ui, selected)
+	_, py, hot := hover(ui, selected, area)
 	for opt, i in options[:min(n, area.height)] {
 		row := Rect{area.x, area.y + i, area.width, 1}
 		chosen := i == selected^
 		mark := "◉" if chosen else "○"
 		mark_style := ui.theme.check if chosen else ui.theme.muted
-		draw_choice(ui, row, mark, mark_style, opt, has_focus && chosen)
+		draw_choice(ui, row, mark, mark_style, opt, has_focus && chosen, hot && py == row.y)
 	}
 	return selected^ != old
 }
@@ -103,14 +107,18 @@ toggled :: proc(ui: ^Ui, area: Rect, value: ^bool) -> (changed: bool) {
 }
 
 // "mark label" on the first row of `area`; a focused choice is drawn like
-// a selected list row.
+// a selected list row, one under the pointer (`hot`) in theme.hover.
 @(private)
-draw_choice :: proc(ui: ^Ui, area: Rect, mark: string, mark_style: Style, label: string, has_focus: bool) {
+draw_choice :: proc(ui: ^Ui, area: Rect, mark: string, mark_style: Style, label: string, has_focus, hot: bool) {
 	row := Rect{area.x, area.y, area.width, 1}
 	base, mark_st := ui.theme.text, mark_style
-	if has_focus {
+	switch {
+	case has_focus:
 		buffer.fill(ui.buf, row, ui.theme.selected)
 		base, mark_st = ui.theme.selected, ui.theme.selected
+	case hot:
+		buffer.fill(ui.buf, row, ui.theme.hover)
+		base = style.patch(base, ui.theme.hover)
 	}
 	p := pen.begin(ui.buf, row, .Ellipsis, base = base)
 	pen.write(&p, mark, mark_st)

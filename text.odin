@@ -11,6 +11,7 @@ Align :: pen_.Align
 
 rgb :: style.rgb
 hex :: style.hex
+patch :: style.patch
 gradient :: style.gradient
 Rgb :: style.Rgb
 Indexed :: style.Indexed

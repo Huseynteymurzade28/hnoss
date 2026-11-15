@@ -49,6 +49,11 @@ click :: proc(x, y: int, kind := input.Mouse_Kind.Press) -> input.Event {
 }
 
 @(private = "file")
+move :: proc(x, y: int) -> input.Event {
+	return input.Mouse{kind = .Move, x = x, y = y}
+}
+
+@(private = "file")
 wheel :: proc(x, y: int, down: bool) -> input.Event {
 	return input.Mouse{kind = .Scroll, button = .Wheel_Down if down else .Wheel_Up, x = x, y = y}
 }
@@ -712,6 +717,181 @@ widget_button :: proc(t: ^testing.T) {
 	testing.expect(t, widgets.button(ui, ui.area, "OK", &ok))
 	ui = frame(hs, ch('x'))
 	testing.expect(t, !widgets.button(ui, ui.area, "OK", &ok))
+}
+
+@(test)
+widget_hover :: proc(t: ^testing.T) {
+	hs := harness(12, 4)
+	a, b: widgets.Button_State
+	top, bottom := widgets.Rect{0, 0, 12, 2}, widgets.Rect{0, 2, 12, 2}
+	draw :: proc(ui: ^widgets.Ui, a, b: ^widgets.Button_State, top, bottom: widgets.Rect) {
+		widgets.button(ui, top, "A", a)
+		widgets.button(ui, bottom, "B", b)
+	}
+	hover := widgets.DEFAULT_THEME.hover
+
+	// A terminal that only reports clicks leaves no hover behind one.
+	ui := frame(hs, input.Mouse{kind = .Scroll, button = .Wheel_Down, x = 3, y = 0})
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &a))
+
+	// The button under the pointer is drawn in theme.hover and stays so
+	// on frames with no events.
+	ui = frame(hs, move(3, 0))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, widgets.hovered(ui, &a))
+	testing.expect(t, !widgets.hovered(ui, &b))
+	widgets.end(ui)
+	ui = frame(hs)
+	testing.expect(t, widgets.hovered(ui, &a)) // from the last frame, before it is drawn
+	draw(ui, &a, &b, top, bottom)
+	expect_style(t, &hs.buf, {fg = hover.fg}, `
+		############
+		############
+	`)
+	widgets.end(ui)
+
+	// Moving on moves the hover; a widget asked before it is drawn this
+	// frame is no longer hovered once it is.
+	ui = frame(hs, move(3, 3))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &a))
+	testing.expect(t, widgets.hovered(ui, &b))
+	widgets.end(ui)
+
+	// A widget that is not drawn any more is not hovered.
+	ui = frame(hs)
+	widgets.button(ui, top, "A", &a)
+	widgets.end(ui)
+	testing.expect(t, !widgets.hovered(ui, &b))
+
+	// Focus and a held press show over the hover.
+	ui = frame(hs, move(3, 0), click(3, 0))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, widgets.hovered(ui, &a))
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).bg, ui.theme.button_pressed.bg)
+	// While it is dragged, nothing else is hovered.
+	ui = frame(hs, click(3, 3, .Drag))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &a))
+	testing.expect(t, !widgets.hovered(ui, &b))
+	ui = frame(hs, click(3, 3, .Release))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, widgets.hovered(ui, &b))
+
+	// Losing the terminal's focus clears it, until the mouse is seen again.
+	ui = frame(hs, input.Focus{gained = false})
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &b))
+	ui = frame(hs, input.Focus{gained = true})
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &b))
+	ui = frame(hs, move(3, 3))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, widgets.hovered(ui, &b))
+	widgets.end(ui)
+
+	// Outside the clip (scrolled out of a scroll view) nothing is hovered.
+	ui = frame(hs)
+	clip := buffer.set_clip(&hs.buf, top)
+	draw(ui, &a, &b, top, bottom)
+	buffer.set_clip(&hs.buf, clip)
+	testing.expect(t, !widgets.hovered(ui, &b))
+	widgets.end(ui)
+
+	// Under a modal the widgets behind it are not hovered; the ones in it are.
+	open := true
+	ui = frame(hs)
+	draw(ui, &a, &b, top, bottom)
+	widgets.modal(ui, bottom, &open)
+	widgets.end(ui)
+	ui = frame(hs)
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &b))
+	widgets.modal(ui, bottom, &open)
+	inside: widgets.Button_State
+	widgets.button(ui, bottom, "C", &inside)
+	testing.expect(t, widgets.hovered(ui, &inside))
+	widgets.end(ui)
+
+	// Nor under a toast.
+	open = false
+	ui = frame(hs, move(9, 1))
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, widgets.hovered(ui, &a))
+	widgets.toast(ui, "Hi")
+	widgets.end(ui)
+	ui = frame(hs)
+	draw(ui, &a, &b, top, bottom)
+	testing.expect(t, !widgets.hovered(ui, &a))
+}
+
+@(test)
+widget_hover_rows_tabs_choices :: proc(t: ^testing.T) {
+	hs := harness(12, 4)
+	hover := style.Style{fg = widgets.DEFAULT_THEME.hover.fg}
+	items := []string{"Bakı", "Gəncə", "Şəki", "Quba", "Şuşa", "Lənkəran"}
+
+	// List: the row under the pointer, counted from the scroll offset; the
+	// selected row keeps its own style.
+	ls := widgets.List_State{offset = 1, selected = 1}
+	ui := frame(hs, move(2, 2))
+	widgets.list(ui, ui.area, items, &ls)
+	testing.expect(t, widgets.hovered(ui, &ls))
+	expect_style(t, &hs.buf, hover, `
+
+
+		############
+	`)
+	ui = frame(hs, move(2, 0))
+	widgets.list(ui, ui.area, items, &ls)
+	expect_style(t, &hs.buf, hover, "")
+
+	// Table: the header is not a row.
+	ts: widgets.Table_State
+	cols := []widgets.Column{{title = "City", width = layout.fill()}}
+	rows := [][]string{{"Bakı"}, {"Gəncə"}, {"Şəki"}}
+	ui = frame(hs, move(2, 0))
+	widgets.table(ui, ui.area, cols, rows, &ts)
+	testing.expect(t, !widgets.hovered(ui, &ts))
+	ui = frame(hs, move(2, 2))
+	widgets.table(ui, ui.area, cols, rows, &ts)
+	expect_style(t, &hs.buf, {fg = hover.fg, sub = {.Bold}}, `
+
+
+		############
+	`)
+	// Past the last row there is nothing to light up.
+	ui = frame(hs, move(2, 3))
+	widgets.table(ui, ui.area, cols[:], rows[:1], &ts)
+	expect_style(t, &hs.buf, {fg = hover.fg, sub = {.Bold}}, "")
+
+	// Tabs: the title under the pointer, not the selected one or a separator.
+	tab := 0
+	ui = frame(hs, move(5, 0))
+	widgets.tabs(ui, ui.area, {"A", "BC", "D"}, &tab)
+	expect_screen(t, &hs.buf, " A │ BC │ D")
+	expect_style(t, &hs.buf, {fg = hover.fg, sub = {.Bold}}, "    ####")
+	ui = frame(hs, move(3, 0))
+	widgets.tabs(ui, ui.area, {"A", "BC", "D"}, &tab)
+	expect_style(t, &hs.buf, {fg = hover.fg, sub = {.Bold}}, "")
+
+	// Checkbox, and the radio row under the pointer.
+	on: bool
+	ui = frame(hs, move(8, 0))
+	widgets.checkbox(ui, {0, 0, 12, 1}, "Wrap", &on)
+	testing.expect_value(t, buffer.get(&hs.buf, 4, 0).fg, hover.fg)
+	choice := 0
+	ui = frame(hs, move(8, 1))
+	widgets.radio(ui, ui.area, {"One", "Two", "Three"}, &choice)
+	testing.expect_value(t, buffer.get(&hs.buf, 2, 1).fg, hover.fg)
+	testing.expect(t, buffer.get(&hs.buf, 2, 2).fg != hover.fg)
+
+	// A select's field, like a button.
+	ss: widgets.Select_State
+	ui = frame(hs, move(8, 0))
+	widgets.select(ui, {0, 0, 12, 1}, items, &ss)
+	testing.expect_value(t, buffer.get(&hs.buf, 1, 0).fg, hover.fg)
 }
 
 @(test)
@@ -1718,7 +1898,7 @@ widget_theme_background :: proc(t: ^testing.T) {
 	th := widgets.HIGH_CONTRAST_THEME
 	for st in ([?]style.Style{th.background, th.text, th.muted, th.accent, th.border, th.border_focused,
 		th.title, th.selected, th.selected_unfocused, th.header, th.gauge_filled, th.gauge_empty,
-		th.tab, th.tab_selected, th.input, th.check, th.button, th.button_focused, th.button_pressed,
+		th.tab, th.tab_selected, th.input, th.check, th.button, th.button_focused, th.button_pressed, th.hover,
 		th.modal, th.scrollbar_track, th.scrollbar_thumb, th.key, th.match}) {
 		check(st, &ok)
 	}

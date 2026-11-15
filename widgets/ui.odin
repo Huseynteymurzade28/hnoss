@@ -33,6 +33,11 @@ Ui :: struct {
 	popup:        ^bool,
 	popup_events: []input.Event,
 	overlay:      Maybe(Overlay), // drawn over everything by `end`
+
+	hover:        rawptr, // the widget that claimed the pointer this frame (see `hover`)
+	// Why the pointer is not over the widgets being drawn now: they are under
+	// a modal (until `modal` is called) or an open popup (the whole frame).
+	pointer_held: enum u8 { No, Modal, Popup },
 }
 
 // A popup list to draw on top of the frame once every widget is drawn.
@@ -52,6 +57,18 @@ Memory :: struct {
 	modal:  ^bool,  // `open` of the modal drawn last frame
 	popup:  ^bool,  // `open` of the popup drawn last frame
 	toasts: Toasts, // the toasts on screen (see `toast`)
+	hover:   rawptr,  // widget under the pointer (see `hovered`)
+	pointer: Pointer, // where the mouse was last reported
+}
+
+// The mouse position, kept from the events of every frame.
+Pointer :: struct {
+	x, y:   int,
+	inside: bool, // over the terminal, as far as we know
+	// The terminal reports motion without a button held. Until a Move has
+	// been seen nothing is hovered: one that reports clicks only would
+	// leave the hover wherever the last click was.
+	moves:  bool,
 }
 
 // Where to show the terminal's own cursor after this frame (TextInput
@@ -83,6 +100,7 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		theme   = theme,
 		now     = time.tick_now(),
 	}
+	track_pointer(&mem.pointer, events)
 	// Toasts are drawn over everything, so they get the mouse first.
 	toast_clicks(ui, events)
 	// An open popup takes every event, even from inside a modal. While a
@@ -92,9 +110,11 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		ui.popup = mem.popup
 		ui.popup_events = events
 		ui.events = events[:0]
+		ui.pointer_held = .Popup
 	} else if mem.modal != nil && mem.modal^ {
 		ui.held = events
 		ui.events = events[:0]
+		ui.pointer_held = .Modal
 	}
 	mem.modal = nil
 	mem.popup = nil
@@ -113,6 +133,7 @@ end :: proc(ui: ^Ui) {
 		draw_overlay(ui, o)
 	}
 	draw_toasts(ui)
+	ui.mem.hover = ui.hover // a widget that is no longer drawn is not hovered
 }
 
 @(private)
@@ -130,6 +151,63 @@ draw_overlay :: proc(ui: ^Ui, o: Overlay) {
 		scrollbar(ui, layout.cut_right(&rows, 1), len(o.items), rows.height, &offset)
 	}
 	draw_rows(ui, rows, o.items, o.selected, o.offset, ui.theme.selected, "› ", o.markup)
+}
+
+// Follows the mouse through this frame's events; losing the terminal's
+// focus takes the pointer away until it is reported again.
+@(private)
+track_pointer :: proc(p: ^Pointer, events: []input.Event) {
+	for ev in events {
+		#partial switch e in ev {
+		case input.Mouse:
+			p.moves ||= e.kind == .Move
+			p.x, p.y, p.inside = e.x, e.y, true
+		case input.Focus:
+			if !e.gained { p.inside = false }
+		}
+	}
+}
+
+// The pointer is somewhere a widget may react to: known, and not over a toast.
+@(private)
+pointer_free :: proc(ui: ^Ui, p: Pointer) -> bool {
+	if !p.inside || !p.moves {
+		return false
+	}
+	ts := &ui.mem.toasts
+	for t in ts.items[:ts.count] {
+		if layout.rect_contains(t.area, p.x, p.y) { return false }
+	}
+	return true
+}
+
+// Whether the pointer rests on `area` (inside the buffer's clip), and where
+// it is. A widget calls it with its state pointer every frame it is drawn;
+// that is what `hovered` answers from. Nothing is hovered under a modal, an
+// open popup or a toast, while another widget is being dragged, after the
+// terminal lost focus, or in a terminal that doesn't report mouse motion.
+//
+//	if _, _, hot := hnoss.hover(ui, &state, area); hot { st = ui.theme.hover }
+hover :: proc(ui: ^Ui, id: rawptr, area: Rect) -> (x, y: int, ok: bool) {
+	p := ui.mem.pointer
+	ok = ui.pointer_held == .No &&
+	     (ui.mem.active == nil || ui.mem.active == id) &&
+	     layout.rect_contains(area, p.x, p.y) &&
+	     layout.rect_contains(ui.buf.clip, p.x, p.y) &&
+	     pointer_free(ui, p)
+	if ok {
+		ui.hover = id
+		ui.mem.hover = id
+	} else if ui.mem.hover == id {
+		ui.mem.hover = nil
+	}
+	return p.x, p.y, ok
+}
+
+// Whether the pointer is over the widget whose state is `id`: as of this
+// frame once the widget is drawn, as of the last one before that.
+hovered :: proc(ui: ^Ui, id: rawptr) -> bool {
+	return id != nil && ui.mem.hover == id
 }
 
 // Gives keyboard focus to the widget whose state is `id` (nil: nobody).

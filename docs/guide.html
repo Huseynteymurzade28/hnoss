@@ -208,6 +208,11 @@ hnoss.focus_order(ui, {&amp;list, &amp;search, &amp;tabs})   <span class="c">// 
 <span class="k">if</span> hnoss.focused(ui, &amp;search) { <span class="c">/* ... */</span> }</code></pre>
 <p>A widget <em>consumes</em> the events it uses. <code>hnoss.unhandled(ui)</code> returns the rest, so app shortcuts never fire while you type into a field. Call it after the widgets.</p>
 
+<h3 id="hover">Hover</h3>
+<p>With <code>.Mouse_Capture</code>, the button, select field, list or table row, tab, checkbox or radio option under the pointer is drawn with <code>theme.hover</code> patched over its own style. Focus, a held press and the selected row show instead of it. <code>hnoss.hovered(ui, &amp;state)</code> tells whether the pointer is over a widget: as of this frame once the widget is drawn, as of the last one before that.</p>
+<p>Nothing is hovered under a modal, an open select or a toast, while another widget is dragged, after the terminal loses focus (with <code>.Focus_Events</code>; a terminal doesn't say when the pointer leaves its window), or in a terminal that reports clicks but not motion. Your own widgets join in with <code>hover</code>, which also returns where the pointer is:</p>
+<pre><code><span class="k">if</span> _, _, hot := hnoss.hover(ui, &amp;state, area); hot { st = hnoss.patch(st, ui.theme.hover) }</code></pre>
+
 <h2 id="theme">Themes</h2>
 <p>Every color a widget uses comes from <code>ui.theme</code>. Copy the default, change what you like, and pass it to <code>hnoss.ui</code>:</p>
 <pre><code>t := hnoss.DEFAULT_THEME
@@ -216,7 +221,7 @@ t.border_focused = {fg = hnoss.hex(0x5fc4c9)}
 t.selected       = {fg = .Black, bg = hnoss.hex(0x5fc4c9), add = {.Bold}}
 t.header         = {fg = hnoss.hex(0xf08a6a), add = {.Bold}}
 ui := hnoss.ui(f, events, t)</code></pre>
-<p>Fields: <code>background text muted accent border border_focused title selected selected_unfocused header gauge_filled gauge_empty tab tab_selected input check button button_focused button_pressed modal scrollbar_track scrollbar_thumb key match info success warning error</code>, plus <code>border_kind</code>. <code>background</code>, when set, fills the whole frame before any widget is drawn.</p>
+<p>Fields: <code>background text muted accent border border_focused title selected selected_unfocused header gauge_filled gauge_empty tab tab_selected input check button button_focused button_pressed hover modal scrollbar_track scrollbar_thumb key match info success warning error</code>, plus <code>border_kind</code>. <code>background</code>, when set, fills the whole frame before any widget is drawn.</p>
 
 <h3 id="presets">Built-in themes</h3>
 <p>Besides <code>DEFAULT_THEME</code>, which uses the terminal's own colors, four presets ship with the library. They set <code>background</code>, so they look the same whatever the terminal's palette is. Start from one and change what you like, or try them all with <code>./build.sh run themes</code> (<kbd>t</kbd> switches).</p>
