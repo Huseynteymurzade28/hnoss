@@ -3,6 +3,7 @@ package widgets
 import "../buffer"
 import "../layout"
 import "../pen"
+import "../style"
 
 Table_State :: List_State
 
@@ -47,15 +48,20 @@ table :: proc(ui: ^Ui, area: Rect, columns: []Column, rows: [][]string, state: ^
 	}
 
 	row_style := ui.theme.selected if focused(ui, state) else ui.theme.selected_unfocused
+	hot := hover_row(ui, state, body, state.offset)
 	for r in state.offset ..< min(state.offset + body.height, len(rows)) {
 		y := body.y + r - state.offset
+		base := ui.theme.text
 		if r == state.selected {
 			buffer.fill(ui.buf, {body.x, y, body.width, 1}, row_style)
+		} else if r == hot {
+			buffer.fill(ui.buf, {body.x, y, body.width, 1}, ui.theme.hover)
+			base = style.patch(base, ui.theme.hover)
 		}
 		for c, i in columns {
 			if i >= len(rows[r]) { break }
 			cell := Rect{cols[i].x, y, cols[i].width, 1}
-			p := pen.begin(ui.buf, cell, .Ellipsis, c.align, base = ui.theme.text)
+			p := pen.begin(ui.buf, cell, .Ellipsis, c.align, base = base)
 			pen.write(&p, rows[r][i])
 			pen.finish(&p)
 		}

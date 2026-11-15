@@ -2,6 +2,7 @@ package widgets
 
 import "../buffer"
 import "../pen"
+import "../style"
 
 // A row of tab titles (markup) separated by "│". ← → (h l) Home End switch
 // while focused; clicking a title selects it. Returns true when
@@ -51,10 +52,14 @@ tabs :: proc(ui: ^Ui, area: Rect, titles: []string, selected: ^int) -> (changed:
 	}
 	selected^ = clamp(selected^, 0, len(titles) - 1)
 
+	px, _, hot := hover(ui, selected, area)
 	right := area.x + area.width
 	for t, i in titles {
 		if xs[i] >= right { break }
 		st := ui.theme.tab_selected if i == selected^ else ui.theme.tab
+		if hot && i != selected^ && px >= xs[i] && px < xs[i + 1] - 1 {
+			st = style.patch(st, ui.theme.hover)
+		}
 		pad := st
 		pad.add -= {.Underlined} // underline the title, not its padding
 		p := pen.begin(ui.buf, {xs[i], area.y, min(xs[i + 1] - 1, right) - xs[i], 1}, .Clip)

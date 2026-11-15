@@ -3,6 +3,7 @@ package widgets
 import "../buffer"
 import "../layout"
 import "../pen"
+import "../style"
 
 Button_State :: struct {
 	pressed: bool, // pressed this frame (same as the return value)
@@ -47,10 +48,12 @@ button :: proc(ui: ^Ui, area: Rect, label: string, state: ^Button_State) -> (pre
 		consume(ui, i)
 	}
 
+	_, _, hot := hover(ui, state, area)
 	st := ui.theme.button
 	switch {
 	case ui.mem.active == state: st = ui.theme.button_pressed
 	case focused(ui, state):     st = ui.theme.button_focused
+	case hot:                    st = style.patch(st, ui.theme.hover)
 	}
 	buffer.fill(ui.buf, area, st)
 	w := markup_width(label)

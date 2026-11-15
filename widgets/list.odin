@@ -7,6 +7,7 @@ import "../buffer"
 import "../input"
 import "../layout"
 import "../pen"
+import "../style"
 import "../text"
 
 List_State :: struct {
@@ -84,11 +85,12 @@ list :: proc(ui: ^Ui, area: Rect, items: []string, state: ^List_State, opts := L
 	select_rows(ui, state, body, 0, n)
 	row_style := ui.theme.selected if focused(ui, state) else ui.theme.selected_unfocused
 	marker := opts.marker.? or_else "› "
+	hot := hover_row(ui, state, body, state.offset)
 	if filtering {
-		draw_rows(ui, body, items, state.selected, state.offset, row_style, marker, opts.markup, shown, query)
+		draw_rows(ui, body, items, state.selected, state.offset, row_style, marker, opts.markup, shown, query, hot)
 		state.selected = shown[state.selected]
 	} else {
-		draw_rows(ui, body, items, state.selected, state.offset, row_style, marker, opts.markup)
+		draw_rows(ui, body, items, state.selected, state.offset, row_style, marker, opts.markup, hot = hot)
 	}
 
 	if bar.width > 0 {
@@ -274,22 +276,27 @@ same_char :: proc(cluster: string, r: rune) -> bool {
 // with `row_style` and preceded by `marker`. With `shown`, row i is
 // items[shown[i]] (rows, `selected` and `offset` count positions in
 // `shown`) and the characters matching `query` are drawn in theme.match.
+// Row `hot`, unless it is the selected one, is drawn in theme.hover.
 @(private)
-draw_rows :: proc(ui: ^Ui, body: Rect, items: []string, selected, offset: int, row_style: Style, marker: string, markup: bool, shown: []int = nil, query := "") {
+draw_rows :: proc(ui: ^Ui, body: Rect, items: []string, selected, offset: int, row_style: Style, marker: string, markup: bool, shown: []int = nil, query := "", hot := -1) {
 	mw := text.width(marker)
 	n := len(shown) if shown != nil else len(items)
 	for i in offset ..< min(offset + body.height, n) {
 		y := body.y + i - offset
+		base := ui.theme.text
 		if i == selected {
 			row := Rect{body.x, y, body.width, 1}
 			buffer.fill(ui.buf, row, row_style)
 			p := pen.begin(ui.buf, row, .Clip)
 			pen.write(&p, marker)
 			pen.finish(&p)
+		} else if i == hot {
+			buffer.fill(ui.buf, {body.x, y, body.width, 1}, ui.theme.hover)
+			base = style.patch(base, ui.theme.hover)
 		}
 		s := items[shown[i]] if shown != nil else items[i]
 		item := Rect{body.x + mw, y, body.width - mw, 1}
-		p := pen.begin(ui.buf, item, .Ellipsis, base = ui.theme.text)
+		p := pen.begin(ui.buf, item, .Ellipsis, base = base)
 		switch {
 		case markup:
 			pen.markup(&p, s)
@@ -313,6 +320,14 @@ write_highlighted :: proc(p: ^pen.Pen, s, query: string, st: Style) {
 		pen.write(p, s[start:end], st if hits[start] else {})
 		start = end
 	}
+}
+
+// The row (counted from the first item) the pointer is on, in the `rows`
+// of the list or table `id` scrolled to `offset`; -1 when it isn't on one.
+@(private)
+hover_row :: proc(ui: ^Ui, id: rawptr, rows: Rect, offset: int) -> int {
+	_, y, hot := hover(ui, id, rows)
+	return offset + y - rows.y if hot else -1
 }
 
 // Keyboard and mouse handling shared by list and table: `rows` is the

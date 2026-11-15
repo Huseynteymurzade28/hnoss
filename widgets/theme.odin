@@ -38,6 +38,7 @@ Theme :: struct {
 	button:             Style,
 	button_focused:     Style,
 	button_pressed:     Style, // held down with the mouse
+	hover:              Style, // patched over what the pointer is on: a button, a row, a tab, a choice
 	modal:              Style, // the inside of a modal (its border is border_focused)
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
@@ -76,6 +77,7 @@ DEFAULT_THEME :: Theme {
 	button             = {bg = .Bright_Black},
 	button_focused     = {fg = .Black, bg = .Cyan, add = {.Bold}},
 	button_pressed     = {fg = .Black, bg = .White, add = {.Bold}},
+	hover              = {fg = .Cyan},
 	modal              = {},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
@@ -118,6 +120,7 @@ ODLAR_YURDU_THEME :: Theme {
 	button             = {fg = ODLAR_TEXT, bg = ODLAR_FRAME},
 	button_focused     = {fg = ODLAR_BG, bg = ODLAR_ACCENT, add = {.Bold}},
 	button_pressed     = {fg = ODLAR_BG, bg = ODLAR_TEXT, add = {.Bold}},
+	hover              = {fg = ODLAR_ACCENT},
 	modal              = {fg = ODLAR_TEXT, bg = ODLAR_BG},
 	scrollbar_track    = {fg = ODLAR_FRAME},
 	scrollbar_thumb    = {fg = ODLAR_ACCENT},
@@ -157,6 +160,7 @@ XEZER_THEME :: Theme {
 	button             = {fg = XEZER_TEXT, bg = XEZER_FRAME},
 	button_focused     = {fg = XEZER_BG, bg = XEZER_ACCENT, add = {.Bold}},
 	button_pressed     = {fg = XEZER_BG, bg = XEZER_TEXT, add = {.Bold}},
+	hover              = {fg = XEZER_ACCENT},
 	modal              = {fg = XEZER_TEXT, bg = XEZER_BG},
 	scrollbar_track    = {fg = XEZER_FRAME},
 	scrollbar_thumb    = {fg = XEZER_ACCENT},
@@ -196,6 +200,7 @@ LIGHT_THEME :: Theme {
 	button             = {fg = LIGHT_TEXT, bg = LIGHT_TRACK},
 	button_focused     = {fg = LIGHT_BG, bg = LIGHT_ACCENT, add = {.Bold}},
 	button_pressed     = {fg = LIGHT_BG, bg = LIGHT_TEXT, add = {.Bold}},
+	hover              = {fg = LIGHT_ACCENT},
 	modal              = {fg = LIGHT_TEXT, bg = LIGHT_BG},
 	scrollbar_track    = {fg = LIGHT_FRAME},
 	scrollbar_thumb    = {fg = LIGHT_ACCENT},
@@ -237,6 +242,7 @@ HIGH_CONTRAST_THEME :: Theme {
 	button             = {fg = .Bright_White, bg = .Bright_Black},
 	button_focused     = {fg = .Black, bg = .Bright_Yellow, add = {.Bold}},
 	button_pressed     = {fg = .Black, bg = .Bright_White, add = {.Bold}},
+	hover              = {fg = .Bright_Yellow, add = {.Bold}},
 	modal              = {fg = .Bright_White, bg = .Black},
 	scrollbar_track    = {fg = .White},
 	scrollbar_thumb    = {fg = .Bright_Yellow},
