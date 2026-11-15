@@ -63,7 +63,7 @@ main :: proc() {
 		hnoss.label(ui, footer, "[dim]Tab focus · ↑↓←→ PgUp PgDn scroll · wheel · click · q quit[/]")
 		hnoss.focus_order(ui, {&left, &right})
 
-		cols := hnoss.split(area, .Horizontal, {24, hnoss.fill()}, gap = 1)
+		cols := hnoss.split(area, .Horizontal, [?]hnoss.Size{24, hnoss.fill()}, gap = 1)
 		// The box goes on last so its title counts this frame's clicks.
 		content := hnoss.scroll_view(ui, hnoss.inset(cols[0], 1), &left, 0, len(regions))
 		n := 0

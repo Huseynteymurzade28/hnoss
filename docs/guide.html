@@ -58,7 +58,7 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <pre><code>odin run . -collection:libs=libs</code></pre>
 <pre><code><span class="k">import</span> hnoss <span class="s">"libs:hnoss"</span></code></pre>
 <p>To stay on a released version, check out a tag inside the submodule (<code>git -C libs/hnoss checkout v0.2.0</code>) and commit the submodule.</p>
-<p>hnoss runs on Linux and macOS (Intel and Apple Silicon). The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
+<p>hnoss runs on Linux, macOS (Intel and Apple Silicon) and FreeBSD. The repository's <code>./build.sh</code> runs <code>odin check</code> with <code>-vet -strict-style</code>, the test suite and builds every example; <code>./build.sh run &lt;example&gt;</code> runs one.</p>
 
 <h2 id="loop">The frame loop</h2>
 <p>hnoss is immediate mode: each frame you describe the whole screen, then hnoss compares it with the previous frame and writes only the difference.</p>
@@ -182,8 +182,8 @@ status  := hnoss.cut_bottom(&amp;area, 1)
 sidebar := hnoss.cut_left(&amp;area, 30)
 <span class="c">// area is now the middle</span></code></pre>
 <p>For proportions, <strong>split</strong> into a fixed-size array. A plain number is cells; <code>percent(p)</code> and <code>fill(weight)</code> share the rest:</p>
-<pre><code>rows := hnoss.split(area, .Vertical, {3, hnoss.fill(), hnoss.percent(25)}, gap = 1)
-cols := hnoss.split(rows[1], .Horizontal, {hnoss.fill(2), hnoss.fill(1)})</code></pre>
+<pre><code>rows := hnoss.split(area, .Vertical, [?]hnoss.Size{3, hnoss.fill(), hnoss.percent(25)}, gap = 1)
+cols := hnoss.split(rows[1], .Horizontal, [?]hnoss.Size{hnoss.fill(2), hnoss.fill(1)})</code></pre>
 <ul>
 <li>Cells and percents are served first come, first served; if space runs out, later ones shrink.</li>
 <li>Fills share what is left by weight, rounded so the pieces always add up exactly.</li>

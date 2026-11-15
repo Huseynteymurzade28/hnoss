@@ -19,7 +19,7 @@
 
 ![hnoss monitor](docs/monitor-odlar-yurdu.svg)
 
-<p align="center"><sub><code>examples/monitor</code>: a live system monitor reading <code>/proc</code>, in the <b>Odlar Yurdu</b> theme.</sub></p>
+<p align="center"><sub><code>examples/monitor</code>: a live system monitor reading <code>/proc</code> on Linux and <code>sysctl</code> on FreeBSD, in the <b>Odlar Yurdu</b> theme.</sub></p>
 
 ## Gallery
 
@@ -77,7 +77,7 @@ main :: proc() {
 
 ## Why hnoss
 
-- **Pure Odin.** Only `core:` and `base:`; raw syscalls on Linux, `core:sys/posix` on macOS. No ncurses, no C.
+- **Pure Odin.** Only `core:` and `base:`; raw syscalls on Linux, `core:sys/posix` on macOS and FreeBSD. No ncurses, no C.
 - **Immediate mode.** Calling a widget draws it, handles its input and returns what happened.
 - **Fast.** Only changed cells are written; a full 200×60 truecolor frame diffs in ~2 ms.
 - **Correct text.** Unicode 16 widths and grapheme clusters: `世界`, `é`, `👩‍💻`, `🇦🇿`.
@@ -90,7 +90,7 @@ main :: proc() {
 ./build.sh run demo        # or: showcase, monitor, plasma, text, layout, event_inspector, w_<widget>
 ```
 
-Runs on Linux and macOS (Intel and Apple Silicon); CI builds and tests both. Windows is [#5](https://github.com/Huseynteymurzade28/hnoss/issues/5). `examples/monitor` reads `/proc`, so it is Linux-only.
+Runs on Linux, macOS (Intel and Apple Silicon) and FreeBSD; CI builds and tests all three. Windows is [#5](https://github.com/Huseynteymurzade28/hnoss/issues/5). `examples/monitor` uses `/proc` on Linux and `sysctl`/`ps` on FreeBSD.
 
 ## License
 

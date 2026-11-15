@@ -30,7 +30,7 @@ main :: proc() {
 		hnoss.label(ui, footer, "[dim]Tab focus · Space toggle · ↑↓ choose · click · q quit[/]")
 		hnoss.focus_order(ui, {&wifi, &bluetooth, &dark, &city})
 
-		cols := hnoss.split(area, .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 1)
+		cols := hnoss.split(area, .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill()}, gap = 1)
 		left := hnoss.box(ui, cols[0], "[b]Settings[/]")
 		hnoss.checkbox(ui, hnoss.cut_top(&left, 1), "Wi-Fi", &wifi)
 		hnoss.checkbox(ui, hnoss.cut_top(&left, 1), "Bluetooth", &bluetooth)

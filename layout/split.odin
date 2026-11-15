@@ -7,8 +7,11 @@ Direction :: enum u8 {
 
 // How big one piece of a split is. A plain number is a size in cells:
 //
-//	split(area, .Vertical, {1, fill(), 3})          // 1-row header, 3-row footer, body gets the rest
-//	split(area, .Horizontal, {percent(30), fill(2), fill(1)}, gap = 1)
+//	split(area, .Vertical, [?]Size{1, fill(), 3})          // 1-row header, 3-row footer, body gets the rest
+//	split(area, .Horizontal, [?]Size{percent(30), fill(2), fill(1)}, gap = 1)
+//
+// The explicit `[?]Size` element type is needed because `Size` is a union;
+// Odin cannot infer a bare composite literal passed to `[$N]Size`.
 Size :: union {
 	int,     // exactly this many cells
 	Percent, // a share of the space (after gaps)

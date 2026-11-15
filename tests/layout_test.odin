@@ -38,7 +38,7 @@ layout_inset_pad_center :: proc(t: ^testing.T) {
 @(test)
 layout_split_cells_and_fill :: proc(t: ^testing.T) {
 	r := Rect{0, 0, 80, 24}
-	a := layout.split(r, .Vertical, {1, layout.fill(), 3})
+	a := layout.split(r, .Vertical, [?]layout.Size{1, layout.fill(), 3})
 	testing.expect_value(t, a[0], Rect{0, 0, 80, 1})
 	testing.expect_value(t, a[1], Rect{0, 1, 80, 20})
 	testing.expect_value(t, a[2], Rect{0, 21, 80, 3})
@@ -47,7 +47,7 @@ layout_split_cells_and_fill :: proc(t: ^testing.T) {
 @(test)
 layout_split_percent_and_weights :: proc(t: ^testing.T) {
 	r := Rect{10, 0, 100, 5}
-	a := layout.split(r, .Horizontal, {layout.percent(30), layout.fill(2), layout.fill(1)})
+	a := layout.split(r, .Horizontal, [?]layout.Size{layout.percent(30), layout.fill(2), layout.fill(1)})
 	testing.expect_value(t, a[0], Rect{10, 0, 30, 5})
 	testing.expect_value(t, a[1], Rect{40, 0, 47, 5}) // 70 * 2/3 = 46.67 -> 47
 	testing.expect_value(t, a[2], Rect{87, 0, 23, 5})
@@ -56,7 +56,7 @@ layout_split_percent_and_weights :: proc(t: ^testing.T) {
 @(test)
 layout_split_rounding_adds_up :: proc(t: ^testing.T) {
 	for width in 0 ..< 60 {
-		a := layout.split(Rect{0, 0, width, 1}, .Horizontal, {layout.fill(), layout.fill(), layout.fill()}, gap = 1)
+		a := layout.split(Rect{0, 0, width, 1}, .Horizontal, [?]layout.Size{layout.fill(), layout.fill(), layout.fill()}, gap = 1)
 		sum := a[0].width + a[1].width + a[2].width + 2
 		testing.expectf(t, sum == max(width, 2), "width %d: pieces+gaps = %d", width, sum)
 		testing.expectf(t, abs(a[0].width - a[2].width) <= 1, "width %d: uneven %v", width, a)
@@ -66,7 +66,7 @@ layout_split_rounding_adds_up :: proc(t: ^testing.T) {
 
 @(test)
 layout_split_gap :: proc(t: ^testing.T) {
-	a := layout.split(Rect{0, 0, 10, 1}, .Horizontal, {3, layout.fill(), 3}, gap = 1)
+	a := layout.split(Rect{0, 0, 10, 1}, .Horizontal, [?]layout.Size{3, layout.fill(), 3}, gap = 1)
 	testing.expect_value(t, a[0], Rect{0, 0, 3, 1})
 	testing.expect_value(t, a[1], Rect{4, 0, 2, 1})
 	testing.expect_value(t, a[2], Rect{7, 0, 3, 1})
@@ -74,19 +74,19 @@ layout_split_gap :: proc(t: ^testing.T) {
 
 @(test)
 layout_split_overflow_first_come_first_served :: proc(t: ^testing.T) {
-	a := layout.split(Rect{0, 0, 10, 1}, .Horizontal, {6, 6, layout.fill()})
+	a := layout.split(Rect{0, 0, 10, 1}, .Horizontal, [?]layout.Size{6, 6, layout.fill()})
 	testing.expect_value(t, a[0].width, 6)
 	testing.expect_value(t, a[1].width, 4)
 	testing.expect_value(t, a[2].width, 0)
 	// No fill: leftover space stays unused at the end.
-	b := layout.split(Rect{0, 0, 10, 1}, .Horizontal, {2, 3})
+	b := layout.split(Rect{0, 0, 10, 1}, .Horizontal, [?]layout.Size{2, 3})
 	testing.expect_value(t, b[1], Rect{2, 0, 3, 1})
 }
 
 @(test)
 layout_split_nested :: proc(t: ^testing.T) {
-	rows := layout.split(Rect{0, 0, 40, 10}, .Vertical, {layout.fill(), layout.fill()})
-	cols := layout.split(rows[1], .Horizontal, {layout.percent(50), layout.fill()})
+	rows := layout.split(Rect{0, 0, 40, 10}, .Vertical, [?]layout.Size{layout.fill(), layout.fill()})
+	cols := layout.split(rows[1], .Horizontal, [?]layout.Size{layout.percent(50), layout.fill()})
 	testing.expect_value(t, cols[0], Rect{0, 5, 20, 5})
 	testing.expect_value(t, cols[1], Rect{20, 5, 20, 5})
 }
@@ -106,7 +106,7 @@ layout_grid :: proc(t: ^testing.T) {
 @(test)
 layout_split_slice_matches_split :: proc(t: ^testing.T) {
 	r := Rect{0, 0, 77, 3}
-	fixed := layout.split(r, .Horizontal, {5, layout.percent(20), layout.fill(3), layout.fill(1)}, gap = 2)
+	fixed := layout.split(r, .Horizontal, [?]layout.Size{5, layout.percent(20), layout.fill(3), layout.fill(1)}, gap = 2)
 	sizes := []layout.Size{5, layout.percent(20), layout.fill(3), layout.fill(1)}
 	dyn := layout.split_slice(r, .Horizontal, sizes, gap = 2)
 	for i in 0 ..< 4 {

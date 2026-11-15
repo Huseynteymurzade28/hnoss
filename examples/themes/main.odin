@@ -56,7 +56,7 @@ main :: proc() {
 		hnoss.tabs(ui, hnoss.cut_top(&inner, 1), {"Cities", "Weather", "About"}, &tab)
 		hnoss.cut_top(&inner, 1)
 
-		cols := hnoss.split(inner, .Horizontal, {16, hnoss.fill()}, gap = 2)
+		cols := hnoss.split(inner, .Horizontal, [?]hnoss.Size{16, hnoss.fill()}, gap = 2)
 		list := hnoss.box(ui, cols[0], "Cities", {focused = hnoss.focused(ui, &cities)})
 		hnoss.list(ui, list, names, &cities)
 
@@ -69,7 +69,7 @@ main :: proc() {
 		hnoss.cut_top(&right, 1)
 		hnoss.checkbox(ui, hnoss.cut_top(&right, 1), "Offline maps", &offline)
 		hnoss.cut_top(&right, 1)
-		buttons := hnoss.split(hnoss.cut_top(&right, 1), .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 2)
+		buttons := hnoss.split(hnoss.cut_top(&right, 1), .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill()}, gap = 2)
 		hnoss.button(ui, buttons[0], "OK", &ok)
 		hnoss.button(ui, buttons[1], "Cancel", &cancel)
 

@@ -43,7 +43,7 @@ main :: proc() {
 			d := hnoss.modal(ui, hnoss.center(f.area, 36, 7), &confirm, "[b]Delete city[/]")
 			hnoss.focus_order(ui, {&cancel_btn, &delete_btn})
 			hnoss.label(ui, hnoss.cut_top(&d, 2), fmt.tprintf("Delete [b]%s[/]?", cities[list.selected]), align = .Center)
-			cols := hnoss.split(hnoss.cut_top(&d, 1), .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 2)
+			cols := hnoss.split(hnoss.cut_top(&d, 1), .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill()}, gap = 2)
 			if hnoss.button(ui, cols[0], "Cancel", &cancel_btn) {
 				confirm = false
 			}

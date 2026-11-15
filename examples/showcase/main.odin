@@ -112,10 +112,10 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, st: ^State, t: f64) {
 	footer := hnoss.cut_bottom(&area, 1)
 	hnoss.label(ui, footer, "[#5fc4c9]Tab[/] [#6d868c]focus[/]  [#5fc4c9]↑↓ jk[/] [#6d868c]select[/]  [#5fc4c9]←→[/] [#6d868c]tabs[/]  [#5fc4c9]q[/] [#6d868c]quit   ·   box · list · graph · table · gauge · sparkline · input · tabs[/]", wrap = .Clip)
 
-	cols := hnoss.split(area, .Horizontal, {hnoss.percent(34), hnoss.fill()}, gap = 1)
+	cols := hnoss.split(area, .Horizontal, [?]hnoss.Size{hnoss.percent(34), hnoss.fill()}, gap = 1)
 
 	// Left: services (markup list) and a deploy panel.
-	left := hnoss.split(cols[0], .Vertical, {hnoss.fill(), 9})
+	left := hnoss.split(cols[0], .Vertical, [?]hnoss.Size{hnoss.fill(), 9})
 	svc := hnoss.box(ui, left[0], "[b]Services[/] [#6d868c]8[/]", {focused = hnoss.focused(ui, &st.services)})
 	hnoss.list(ui, svc, {
 		"[#7fd88f]●[/] api-gateway        [#6d868c]v2.4.1[/]",
@@ -140,7 +140,7 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, st: ^State, t: f64) {
 	hnoss.label(ui, dep, "[#7fd88f]✓[/] build  [#7fd88f]✓[/] tests 76/76  [#e8c060]◐[/] rollout", wrap = .Clip)
 
 	// Right: traffic graph, regions table, gauges.
-	right := hnoss.split(cols[1], .Vertical, {hnoss.fill(3), hnoss.fill(3), 5})
+	right := hnoss.split(cols[1], .Vertical, [?]hnoss.Size{hnoss.fill(3), hnoss.fill(3), 5})
 	last := st.traffic[len(st.traffic) - 1]
 	gr := hnoss.box(ui, right[0], fmt.tprintf("[b]Requests[/] [#6d868c]per second[/]  [b #5fc4c9]%.0f[/]", last))
 	hnoss.graph(ui, gr, st.traffic[:], {max_value = 1100, gradient = GRAPH[:]})
@@ -166,7 +166,7 @@ draw :: proc(ui: ^hnoss.Ui, f: ^hnoss.Frame, st: ^State, t: f64) {
 	hnoss.label(ui, hnoss.cut_top(&spark_area, 1), fmt.tprintf("  [#6d868c]p50 latency[/] [b]%.1f ms[/]", lat))
 	hnoss.sparkline(ui, hnoss.pad(spark_area, 0, 0, 0, 2), st.latency[:], max_value = 45, st = hnoss.Style{fg = RED_LIGHT})
 
-	g := hnoss.split(right[2], .Horizontal, {hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 1)
+	g := hnoss.split(right[2], .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill(), hnoss.fill()}, gap = 1)
 	values := [3]f64{0.42 + 0.2 * math.sin(t), 0.67 + 0.05 * math.sin(t * 0.3), 0.81}
 	names := [3]string{"CPU", "Memory", "Disk"}
 	for i in 0 ..< 3 {

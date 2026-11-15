@@ -33,7 +33,7 @@ main :: proc() {
 		hnoss.key_hints(ui, footer, {{"Tab", "focus"}, {"← →", "slide"}, {"↑ ↓", "step"}, {"q", "quit"}})
 		hnoss.focus_order(ui, {&volume, &bass, &tempo, &guests, &glasses, &price})
 
-		cols := hnoss.split(area, .Horizontal, {hnoss.fill(), hnoss.fill()}, gap = 1)
+		cols := hnoss.split(area, .Horizontal, [?]hnoss.Size{hnoss.fill(), hnoss.fill()}, gap = 1)
 		left := hnoss.box(ui, cols[0], "[b]Səs[/] [dim]· sound[/]")
 		row :: proc(ui: ^hnoss.Ui, area: ^hnoss.Rect, name: string) -> hnoss.Rect {
 			r := hnoss.cut_top(area, 1)
