@@ -1899,7 +1899,7 @@ widget_theme_background :: proc(t: ^testing.T) {
 	for st in ([?]style.Style{th.background, th.text, th.muted, th.accent, th.border, th.border_focused,
 		th.title, th.selected, th.selected_unfocused, th.header, th.gauge_filled, th.gauge_empty,
 		th.tab, th.tab_selected, th.input, th.check, th.button, th.button_focused, th.button_pressed, th.hover,
-		th.modal, th.scrollbar_track, th.scrollbar_thumb, th.key, th.match}) {
+		th.modal, th.tooltip, th.scrollbar_track, th.scrollbar_thumb, th.key, th.match}) {
 		check(st, &ok)
 	}
 	testing.expect(t, ok, "HIGH_CONTRAST_THEME uses a color that isn't a Named_Color")
@@ -2023,4 +2023,155 @@ fmt_concat :: proc(parts: []string) -> string {
 	out.allocator = context.temp_allocator
 	for p in parts { append(&out, p) }
 	return string(out[:])
+}
+
+@(private = "file")
+frame_at :: proc(hs: ^Harness, ms: int, events: ..input.Event) -> ^widgets.Ui {
+	ui := frame(hs, ..events)
+	ui.now = at_ms(ms)
+	return ui
+}
+
+@(test)
+widget_tooltip :: proc(t: ^testing.T) {
+	hs := harness(24, 5)
+	save: widgets.Button_State
+	field := widgets.Rect{0, 1, 8, 1}
+	draw :: proc(hs: ^Harness, ms: int, save: ^widgets.Button_State, field: widgets.Rect, events: ..input.Event) {
+		ui := frame_at(hs, ms, ..events)
+		widgets.button(ui, field, "Save", save)
+		widgets.tooltip(ui, save, field, "Write the [b]file[/]")
+		widgets.end(ui)
+	}
+	closed := `
+
+		  Save
+	`
+	open := `
+
+		  Save
+		 Write the file
+	`
+
+	// Nothing is waiting until the pointer is on the widget.
+	draw(hs, 0, &save, field)
+	testing.expect_value(t, widgets.tooltip_timeout(&hs.mem, at_ms(0), -1), -1)
+
+	// It opens once the pointer has rested for the delay, on a frame with
+	// no input; tooltip_timeout says when that frame is due.
+	draw(hs, 0, &save, field, move(2, 1))
+	expect_screen(t, &hs.buf, closed)
+	testing.expect_value(t, widgets.tooltip_timeout(&hs.mem, at_ms(100), -1), 401)
+	testing.expect_value(t, widgets.tooltip_timeout(&hs.mem, at_ms(100), 50), 50)
+	testing.expect_value(t, widgets.timeout(&hs.mem, at_ms(100), -1), 401)
+	draw(hs, 499, &save, field)
+	expect_screen(t, &hs.buf, closed)
+	draw(hs, 500, &save, field)
+	expect_screen(t, &hs.buf, open)
+	tip := widgets.DEFAULT_THEME.tooltip
+	expect_style(t, &hs.buf, {fg = tip.fg, bg = tip.bg}, `
+
+
+		################
+	`)
+	expect_style(t, &hs.buf, {add = {.Bold}}, `
+
+
+		           ####
+	`)
+	testing.expect_value(t, widgets.tooltip_timeout(&hs.mem, at_ms(500), -1), -1)
+
+	// Moving inside the widget keeps it; a key closes it, and it stays
+	// closed while the pointer is still there.
+	draw(hs, 600, &save, field, move(3, 1))
+	expect_screen(t, &hs.buf, open)
+	draw(hs, 700, &save, field, ch('x'))
+	expect_screen(t, &hs.buf, closed)
+	draw(hs, 800, &save, field, move(4, 1))
+	draw(hs, 2000, &save, field)
+	expect_screen(t, &hs.buf, closed)
+	testing.expect_value(t, widgets.tooltip_timeout(&hs.mem, at_ms(2000), -1), -1)
+
+	// Leaving and coming back starts over; moving away closes it at once.
+	draw(hs, 2100, &save, field, move(20, 4))
+	draw(hs, 2200, &save, field, move(2, 1))
+	draw(hs, 2700, &save, field)
+	expect_screen(t, &hs.buf, open)
+	draw(hs, 2800, &save, field, move(20, 4))
+	expect_screen(t, &hs.buf, closed)
+
+	// The pointer has to rest: every move starts the wait again.
+	draw(hs, 3000, &save, field, move(2, 1))
+	draw(hs, 3400, &save, field, move(3, 1))
+	draw(hs, 3600, &save, field)
+	expect_screen(t, &hs.buf, closed)
+	draw(hs, 3900, &save, field)
+	expect_screen(t, &hs.buf, open)
+
+	// A click closes it too (and still presses the button).
+	draw(hs, 4000, &save, field, click(3, 1), click(3, 1, .Release))
+	testing.expect(t, save.pressed)
+	draw(hs, 5000, &save, field)
+	expect_screen(t, &hs.buf, closed)
+}
+
+@(test)
+widget_tooltip_placement :: proc(t: ^testing.T) {
+	// No room below: above. Past the right edge: shifted left.
+	hs := harness(20, 4)
+	id: int
+	corner := widgets.Rect{16, 3, 4, 1}
+	for ms in ([2]int{0, 500}) {
+		ui := frame_at(hs, ms, move(17, 3) if ms == 0 else nil)
+		widgets.label(ui, corner, "Quit")
+		widgets.tooltip(ui, &id, corner, "Leave the app")
+		widgets.end(ui)
+	}
+	expect_screen(t, &hs.buf, `
+
+
+		      Leave the app
+		                Quit
+	`)
+	testing.expect_value(t, buffer.get(&hs.buf, 19, 2).bg, widgets.DEFAULT_THEME.tooltip.bg)
+	testing.expect_value(t, buffer.get(&hs.buf, 4, 2).bg, nil)
+
+	// Long text wraps in at most 40 cells, and the box is as wide as the
+	// longest line; a custom delay.
+	hs = harness(50, 5)
+	top := widgets.Rect{2, 0, 6, 1}
+	for ms in ([2]int{0, 100}) {
+		ui := frame_at(hs, ms, move(3, 0) if ms == 0 else nil)
+		widgets.tooltip(ui, &id, top, "Removes the city and everything that was written about it", 100 * time.Millisecond)
+		widgets.end(ui)
+	}
+	expect_screen(t, &hs.buf, `
+
+		   Removes the city and everything that
+		   was written about it
+	`)
+	testing.expect_value(t, buffer.get(&hs.buf, 39, 2).bg, widgets.DEFAULT_THEME.tooltip.bg)
+	testing.expect_value(t, buffer.get(&hs.buf, 40, 2).bg, nil)
+
+	// Nothing under a modal; the widgets inside it have theirs.
+	hs = harness(20, 6)
+	open := true
+	inside: int
+	behind, dialog := widgets.Rect{0, 0, 6, 1}, widgets.Rect{0, 2, 20, 3}
+	for ms in ([3]int{0, 10, 600}) {
+		ui := frame_at(hs, ms, move(2, 0) if ms == 10 else nil)
+		widgets.tooltip(ui, &id, behind, "behind")
+		inner := widgets.modal(ui, dialog, &open)
+		widgets.tooltip(ui, &inside, inner, "inside")
+		widgets.end(ui)
+	}
+	testing.expect_value(t, screen_rows(&hs.buf)[1], "")
+	for ms in ([2]int{700, 1200}) {
+		ui := frame_at(hs, ms, move(2, 3) if ms == 700 else nil)
+		widgets.tooltip(ui, &id, behind, "behind")
+		inner := widgets.modal(ui, dialog, &open)
+		widgets.tooltip(ui, &inside, inner, "inside")
+		widgets.end(ui)
+	}
+	testing.expect_value(t, screen_rows(&hs.buf)[4], "╰ inside ──────────╯") // under the inner row, over the border
 }

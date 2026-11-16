@@ -36,7 +36,7 @@ select :: proc(ui: ^Ui, area: Rect, items: []string, state: ^Select_State, opts 
 		state.open = false
 		return state.selected != old
 	}
-	popup := popup_area(ui.area, area, n, opts.max_rows if opts.max_rows > 0 else 8)
+	popup := place_popup(ui.area, area, area.width, min(n, opts.max_rows if opts.max_rows > 0 else 8) + 2)
 	rows := layout.inset(popup, 1)
 
 	if state.open && ui.popup == &state.open {
@@ -89,14 +89,15 @@ select :: proc(ui: ^Ui, area: Rect, items: []string, state: ^Select_State, opts 
 	return state.selected != old
 }
 
-// Where the options go: under `field` if they fit there or there is more
-// room below than above, otherwise above it; as wide as the field.
+// Where a `width` by `height` popup for `field` goes (a select's options, a
+// tooltip): under it if it fits there or there is more room below than
+// above, otherwise above it; starting at the field's left edge, shifted
+// to stay on the screen, and cut to the room there is.
 @(private)
-popup_area :: proc(screen, field: Rect, n, max_rows: int) -> Rect {
-	h := min(n, max_rows) + 2
+place_popup :: proc(screen, field: Rect, width, height: int) -> Rect {
+	w, h := min(width, screen.width), height
 	below := layout.rect_bottom(screen) - layout.rect_bottom(field)
 	above := field.y - screen.y
-	w := min(field.width, screen.width)
 	x := clamp(field.x, screen.x, layout.rect_right(screen) - w)
 	if below >= h || below >= above {
 		return {x, layout.rect_bottom(field), w, min(h, below)}

@@ -50,6 +50,7 @@
 	<h4>Overlays</h4>
 	<a href="#modal">modal</a>
 	<a href="#toast">toast</a>
+	<a href="#tooltip">tooltip</a>
 	<h4>Help</h4>
 	<a href="#key_hints">key_hints · key_help</a>
 </aside>
@@ -374,7 +375,7 @@ hnoss.slider(ui, row1, &amp;volume, 0, 100, {step = 5, show_value = <span class=
 Toast_Kind :: enum { Info, Success, Warning, Error }
 toast_timeout :: proc(t: ^Terminal, wait_ms: int) -&gt; int</div>
 <p>A short markup message in the top-right corner, drawn over everything (by <code>end_frame</code>, after the other widgets and any open <a href="#select">select</a>). It goes away by itself after <code>duration</code> (<code>0</code>: 4 s, warnings 6 s, errors 8 s). Several stack, oldest on top, and slide up when one goes away; long text wraps, up to four lines in a box at most 44 cells wide. Clicking a toast dismisses it, and the click doesn't reach the widget under it. Call it on any frame, from anywhere: the toasts live in the terminal's widget memory (at most <code>MAX_TOASTS</code>, a new one drops the oldest), so there is no state to keep or free.</p>
-<p>They expire and slide without any input, so let them wake the loop: wait with <code>toast_timeout</code>, which returns your own timeout when no toasts are showing.</p>
+<p>They expire and slide without any input, so let them wake the loop: wait with <code>toast_timeout</code>, which returns your own timeout when no toasts are showing (<code>timeout</code> does the same for toasts and <a href="#tooltip">tooltips</a> together).</p>
 <img src="widgets/toast.svg" alt="toast">
 <pre><code><span class="k">if</span> hnoss.button(ui, row, <span class="s">"Save"</span>, &amp;save) {
     <span class="k">if</span> write_file() { hnoss.toast(ui, <span class="s">"Saved [b]notes.txt[/]"</span>, .Success) }
@@ -383,6 +384,21 @@ toast_timeout :: proc(t: ^Terminal, wait_ms: int) -&gt; int</div>
 ...
 events = hnoss.poll_events(&amp;term, hnoss.toast_timeout(&amp;term, -1))</code></pre>
 <p>Theme: <code>info</code>, <code>success</code>, <code>warning</code>, <code>error</code> for the border and icon; <code>modal</code> inside, <code>text</code> for the message.</p>
+</div>
+
+<h2 id="tooltip">tooltip</h2>
+<div class="widget">
+<div class="sig">tooltip :: proc(ui: ^Ui, id: rawptr, area: Rect, text: string, delay := TOOLTIP_DELAY)
+timeout :: proc(t: ^Terminal, wait_ms: int) -&gt; int</div>
+<p>A short markup text that opens next to <code>area</code> once the pointer has rested on it for <code>delay</code> (half a second), drawn over everything but the toasts. It goes under the area, or above it when there is no room below, and shifts left to stay on the screen; long text wraps in at most 40 cells. Moving the pointer away closes it; so does any key, click or wheel, and then it stays closed until the pointer has left and come back.</p>
+<p>Call it right after the widget it explains, with that widget's state and area. <code>id</code> only tells tooltips apart, so for a widget without state anything with a stable address does. For a tall widget pass the row the text is about, not the whole area. Like <a href="guide.html#hover">hover</a> it needs <code>.Mouse_Capture</code>, and nothing opens under a modal, an open select or a toast, or while a widget is dragged.</p>
+<p>It opens without any input, so let it wake the loop: wait with <code>timeout</code>, which covers the toasts too and returns your own timeout when nothing is pending.</p>
+<img src="widgets/tooltip.svg" alt="tooltip">
+<pre><code><span class="k">if</span> hnoss.button(ui, row, <span class="s">"Save"</span>, &amp;save) { write_file() }
+hnoss.tooltip(ui, &amp;save, row, <span class="s">"Write the file ([b]Ctrl+S[/])"</span>)
+...
+events = hnoss.poll_events(&amp;term, hnoss.timeout(&amp;term, -1))</code></pre>
+<p>Theme: <code>tooltip</code>.</p>
 </div>
 
 <h2 id="key_hints">key_hints · key_help</h2>

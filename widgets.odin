@@ -100,6 +100,8 @@ Select_State :: widgets.Select_State
 Select_Options :: widgets.Select_Options
 Button_State :: widgets.Button_State
 modal :: widgets.modal
+tooltip :: widgets.tooltip
+TOOLTIP_DELAY :: widgets.TOOLTIP_DELAY
 toast :: widgets.toast
 Toast_Kind :: widgets.Toast_Kind
 
@@ -110,5 +112,14 @@ Toast_Kind :: widgets.Toast_Kind
 //	events = hnoss.poll_events(&term, hnoss.toast_timeout(&term, -1))
 toast_timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
 	return widgets.toast_timeout(&t.widget_memory, time.tick_now(), wait_ms)
+}
+
+// How long to wait for input so that what happens by itself still gets its
+// frame on time: toasts sliding and expiring, a tooltip opening. `wait_ms`
+// when nothing is pending, otherwise at most that (-1: no limit of your own).
+//
+//	events = hnoss.poll_events(&term, hnoss.timeout(&term, -1))
+timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
+	return widgets.timeout(&t.widget_memory, time.tick_now(), wait_ms)
 }
 Graph_Options :: widgets.Graph_Options
