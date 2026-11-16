@@ -38,6 +38,11 @@ Ui :: struct {
 	// Why the pointer is not over the widgets being drawn now: they are under
 	// a modal (until `modal` is called) or an open popup (the whole frame).
 	pointer_held: enum u8 { No, Modal, Popup },
+
+	tooltip:       Maybe(Tooltip), // drawn over the overlay by `end`
+	tooltip_seen:  bool, // the pointer is on a widget with a tooltip
+	pointer_moved: bool, // this frame's events moved the pointer...
+	pointer_acted: bool, // ...or pressed, clicked or scrolled something
 }
 
 // A popup list to draw on top of the frame once every widget is drawn.
@@ -59,6 +64,7 @@ Memory :: struct {
 	toasts: Toasts, // the toasts on screen (see `toast`)
 	hover:   rawptr,  // widget under the pointer (see `hovered`)
 	pointer: Pointer, // where the mouse was last reported
+	tooltip: Tooltip_State, // the tooltip waiting to open or showing (see `tooltip`)
 }
 
 // The mouse position, kept from the events of every frame.
@@ -101,6 +107,7 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		now     = time.tick_now(),
 	}
 	track_pointer(&mem.pointer, events)
+	tooltip_events(ui, events)
 	// Toasts are drawn over everything, so they get the mouse first.
 	toast_clicks(ui, events)
 	// An open popup takes every event, even from inside a modal. While a
@@ -125,13 +132,14 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 }
 
 // Finishes this frame's widgets by drawing the overlay layer (an open
-// select's options), then the toasts, over everything else. end_frame
-// calls it for you.
+// select's options), then the tooltip and the toasts, over everything
+// else. end_frame calls it for you.
 end :: proc(ui: ^Ui) {
 	if o, ok := ui.overlay.?; ok {
 		ui.overlay = nil
 		draw_overlay(ui, o)
 	}
+	draw_tooltip(ui)
 	draw_toasts(ui)
 	ui.mem.hover = ui.hover // a widget that is no longer drawn is not hovered
 }
@@ -181,6 +189,18 @@ pointer_free :: proc(ui: ^Ui, p: Pointer) -> bool {
 	return true
 }
 
+// The pointer is on `area` (inside the buffer's clip) and the widget `id`
+// may react to it.
+@(private)
+pointer_on :: proc(ui: ^Ui, id: rawptr, area: Rect) -> bool {
+	p := ui.mem.pointer
+	return ui.pointer_held == .No &&
+	       (ui.mem.active == nil || ui.mem.active == id) &&
+	       layout.rect_contains(area, p.x, p.y) &&
+	       layout.rect_contains(ui.buf.clip, p.x, p.y) &&
+	       pointer_free(ui, p)
+}
+
 // Whether the pointer rests on `area` (inside the buffer's clip), and where
 // it is. A widget calls it with its state pointer every frame it is drawn;
 // that is what `hovered` answers from. Nothing is hovered under a modal, an
@@ -190,11 +210,7 @@ pointer_free :: proc(ui: ^Ui, p: Pointer) -> bool {
 //	if _, _, hot := hnoss.hover(ui, &state, area); hot { st = ui.theme.hover }
 hover :: proc(ui: ^Ui, id: rawptr, area: Rect) -> (x, y: int, ok: bool) {
 	p := ui.mem.pointer
-	ok = ui.pointer_held == .No &&
-	     (ui.mem.active == nil || ui.mem.active == id) &&
-	     layout.rect_contains(area, p.x, p.y) &&
-	     layout.rect_contains(ui.buf.clip, p.x, p.y) &&
-	     pointer_free(ui, p)
+	ok = pointer_on(ui, id, area)
 	if ok {
 		ui.hover = id
 		ui.mem.hover = id

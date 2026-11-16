@@ -40,6 +40,7 @@ Theme :: struct {
 	button_pressed:     Style, // held down with the mouse
 	hover:              Style, // patched over what the pointer is on: a button, a row, a tab, a choice
 	modal:              Style, // the inside of a modal (its border is border_focused)
+	tooltip:            Style,
 	scrollbar_track:    Style,
 	scrollbar_thumb:    Style,
 	key:                Style, // a key in key_hints / key_help
@@ -79,6 +80,7 @@ DEFAULT_THEME :: Theme {
 	button_pressed     = {fg = .Black, bg = .White, add = {.Bold}},
 	hover              = {fg = .Cyan},
 	modal              = {},
+	tooltip            = {fg = .Black, bg = .White},
 	scrollbar_track    = {fg = .Bright_Black},
 	scrollbar_thumb    = {fg = .Cyan},
 	key                = {fg = .Cyan, add = {.Bold}},
@@ -122,6 +124,7 @@ ODLAR_YURDU_THEME :: Theme {
 	button_pressed     = {fg = ODLAR_BG, bg = ODLAR_TEXT, add = {.Bold}},
 	hover              = {fg = ODLAR_ACCENT},
 	modal              = {fg = ODLAR_TEXT, bg = ODLAR_BG},
+	tooltip            = {fg = ODLAR_BG, bg = ODLAR_TEXT},
 	scrollbar_track    = {fg = ODLAR_FRAME},
 	scrollbar_thumb    = {fg = ODLAR_ACCENT},
 	key                = {fg = ODLAR_ACCENT, add = {.Bold}},
@@ -162,6 +165,7 @@ XEZER_THEME :: Theme {
 	button_pressed     = {fg = XEZER_BG, bg = XEZER_TEXT, add = {.Bold}},
 	hover              = {fg = XEZER_ACCENT},
 	modal              = {fg = XEZER_TEXT, bg = XEZER_BG},
+	tooltip            = {fg = XEZER_BG, bg = XEZER_TEXT},
 	scrollbar_track    = {fg = XEZER_FRAME},
 	scrollbar_thumb    = {fg = XEZER_ACCENT},
 	key                = {fg = XEZER_ACCENT, add = {.Bold}},
@@ -202,6 +206,7 @@ LIGHT_THEME :: Theme {
 	button_pressed     = {fg = LIGHT_BG, bg = LIGHT_TEXT, add = {.Bold}},
 	hover              = {fg = LIGHT_ACCENT},
 	modal              = {fg = LIGHT_TEXT, bg = LIGHT_BG},
+	tooltip            = {fg = LIGHT_BG, bg = LIGHT_TEXT},
 	scrollbar_track    = {fg = LIGHT_FRAME},
 	scrollbar_thumb    = {fg = LIGHT_ACCENT},
 	key                = {fg = LIGHT_ACCENT, add = {.Bold}},
@@ -244,6 +249,7 @@ HIGH_CONTRAST_THEME :: Theme {
 	button_pressed     = {fg = .Black, bg = .Bright_White, add = {.Bold}},
 	hover              = {fg = .Bright_Yellow, add = {.Bold}},
 	modal              = {fg = .Bright_White, bg = .Black},
+	tooltip            = {fg = .Black, bg = .Bright_White},
 	scrollbar_track    = {fg = .White},
 	scrollbar_thumb    = {fg = .Bright_Yellow},
 	key                = {fg = .Bright_Yellow, add = {.Bold}},
