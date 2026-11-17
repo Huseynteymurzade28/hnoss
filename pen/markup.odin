@@ -11,11 +11,16 @@ import "../style"
 // A tag is a space-separated list of attributes, applied on top of the
 // style outside it; `[/]` closes the innermost open tag.
 //   modifiers  b bold  d dim  i italic  u underline  blink  r reverse  hidden  s strike
+//   underlines underdouble undercurl underdotted underdashed, `ul=<color>`
 //   colors     black red green yellow blue magenta cyan white, bright_<name>,
 //              default, #rrggbb, @n (256-color index)
 //   background `on <color>`
+//   links      `link=<url>`: "[link=https://odin-lang.org]Odin[/]"
 // `[[` is a literal `[`. Anything in brackets that is not a valid tag is
-// written as-is, so "[1/3]" or "[x]" need no escaping.
+// written as-is, so "[1/3]" or "[x]" need no escaping. A URL can't hold a
+// space or `]` (percent-encode them as %20 and %5D).
+//
+// Links point into `src`, so it has to outlive the pen's `finish`.
 markup :: proc(p: ^Pen, src: string, base: style.Style = {}) {
 	MAX_DEPTH :: 16
 	stack: [MAX_DEPTH]style.Style
@@ -78,6 +83,19 @@ parse_tag :: proc(tag: string) -> (st: style.Style, ok: bool) {
 			st.add += {m}
 			continue
 		}
+		if u, is_underline := parse_underline(word); is_underline {
+			st.underline = u
+			continue
+		}
+		if strings.has_prefix(word, "ul=") {
+			st.underline_color = parse_color(word[len("ul="):]) or_return
+			continue
+		}
+		if strings.has_prefix(word, "link=") {
+			st.link = word[len("link="):]
+			if st.link == "" { return {}, false }
+			continue
+		}
 		st.fg = parse_color(word) or_return
 	}
 	return st, saw_any
@@ -94,6 +112,17 @@ parse_modifier :: proc(word: string) -> (style.Modifier, bool) {
 	case "r", "reverse":               return .Reversed, true
 	case "hidden":                     return .Hidden, true
 	case "s", "strike":                return .Crossed_Out, true
+	}
+	return {}, false
+}
+
+@(private)
+parse_underline :: proc(word: string) -> (style.Underline, bool) {
+	switch word {
+	case "underdouble": return .Double, true
+	case "undercurl":   return .Curly, true
+	case "underdotted": return .Dotted, true
+	case "underdashed": return .Dashed, true
 	}
 	return {}, false
 }

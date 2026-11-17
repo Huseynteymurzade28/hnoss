@@ -160,9 +160,12 @@ lines := hnoss.finish(&amp;p)       <span class="c">// required: places the last
 <tr><td><code>red</code> … <code>white</code>, <code>bright_red</code></td><td>the 16 terminal colors; <code>default</code> resets</td></tr>
 <tr><td><code>#ff8800</code> · <code>@208</code></td><td>truecolor · 256-color index</td></tr>
 <tr><td><code>on &lt;color&gt;</code></td><td>background</td></tr>
+<tr><td><code>underdouble undercurl underdotted underdashed</code></td><td>underline shapes (plain <code>u</code> keeps the current one)</td></tr>
+<tr><td><code>ul=&lt;color&gt;</code></td><td>underline color, e.g. <code>[undercurl ul=#ff5555]</code></td></tr>
+<tr><td><code>link=&lt;url&gt;</code></td><td>a clickable OSC 8 hyperlink: <code>[link=https://odin-lang.org]Odin[/]</code></td></tr>
 <tr><td><code>[[</code></td><td>a literal <code>[</code></td></tr>
 </table>
-<p>Brackets that are not a valid tag stay as text, so <code>"page [1/3]"</code> or <code>"[x] done"</code> need no escaping.</p>
+<p>Brackets that are not a valid tag stay as text, so <code>"page [1/3]"</code> or <code>"[x] done"</code> need no escaping. A URL can't hold a space or <code>]</code>; percent-encode them (<code>%20</code>, <code>%5D</code>).</p>
 
 <h2 id="style">Colors &amp; style</h2>
 <p>A <code>Style</code> is a patch: non-nil colors replace, <code>add</code> modifiers switch on, <code>sub</code> switch off.</p>
@@ -173,6 +176,14 @@ c3: hnoss.Color = hnoss.hex(0x22848c)    <span class="c">// truecolor</span>
 c4 := hnoss.gradient(stops, 0.7)          <span class="c">// interpolate []Rgb at t</span></code></pre>
 <p>Draw in any color; the diff turns it into what the terminal can show. <code>init</code> reads the color depth from the environment: <code>COLORTERM=truecolor</code> (or a terminal known to support it) keeps RGB, a <code>*-256color</code> <code>TERM</code> maps RGB to the nearest 256-palette entry, anything else to the nearest of the 16 colors, and <a href="https://no-color.org"><code>NO_COLOR</code></a> drops colors but keeps bold, underline and the other modifiers. To override it, for example from a <code>--color</code> flag:</p>
 <pre><code>hnoss.set_color_depth(&amp;term, .Ansi256)   <span class="c">// .Truecolor, .Ansi256, .Ansi16, .No_Color</span></code></pre>
+<h3>Underlines &amp; hyperlinks</h3>
+<p>An underline can be single, double, curly, dotted or dashed and have its own color; <code>link</code> makes text a hyperlink that terminals supporting OSC 8 let you click. The buffer keeps its own copy of the URL, and the link belongs to the text written with it: drawing other text over it drops the link.</p>
+<pre><code>spell := hnoss.underline(.Curly, hnoss.rgb(255, 85, 85))   <span class="c">// Style{underline = .Curly, underline_color = …}</span>
+docs  := hnoss.link(<span class="s">"https://odin-lang.org/docs"</span>)
+buffer.set_string(f.buffer, 0, 0, <span class="s">"teh"</span>, spell)
+buffer.set_string(f.buffer, 0, 1, <span class="s">"Odin docs"</span>, hnoss.patch(docs, {add = {.Underlined}}))</code></pre>
+<p>A terminal that doesn't know the newer underline sequences may misread them, so <code>init</code> only sends shapes and colors to terminals known to draw them (kitty, ghostty, foot, alacritty, WezTerm, contour, VS Code, VTE-based ones); elsewhere every underline is a plain one in the text color. Hyperlinks are on except for <code>TERM=dumb</code> and the Linux console. Override the guess with:</p>
+<pre><code>hnoss.set_output_features(&amp;term, {.Styled_Underlines, .Hyperlinks})</code></pre>
 
 <h2 id="layout">Layout</h2>
 <p>Layout is plain <code>Rect</code> math: no solver, no allocation. The natural immediate-mode way is to <strong>cut</strong> pieces off the edges:</p>

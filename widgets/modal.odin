@@ -73,6 +73,7 @@ blank :: proc(b: ^buffer.Buffer, area: Rect) {
 		for x in r.x ..< r.x + r.width {
 			c := buffer.get(b, x, y)
 			c.fg, c.bg, c.modifiers = nil, nil, {}
+			c.underline, c.underline_color, c.link = {}, nil, 0
 		}
 	}
 }

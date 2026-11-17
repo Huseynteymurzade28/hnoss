@@ -1,5 +1,6 @@
 package style
 
+import "core:strconv"
 import "core:strings"
 
 // How many colors the terminal can show. The zero value is Truecolor, so a
@@ -11,12 +12,13 @@ Color_Depth :: enum u8 {
 	No_Color,  // no colors at all (NO_COLOR); modifiers like bold still apply
 }
 
-// The environment variables color detection looks at.
+// The environment variables color (and underline) detection looks at.
 Color_Env :: struct {
 	no_color:     string, // NO_COLOR
 	colorterm:    string, // COLORTERM
 	term:         string, // TERM
 	term_program: string, // TERM_PROGRAM
+	vte_version:  string, // VTE_VERSION (GNOME Terminal, Tilix, … ), e.g. "7600"
 }
 
 // Guesses the color depth from the environment:
@@ -55,6 +57,27 @@ detect_color_depth :: proc(env: Color_Env) -> Color_Depth {
 		return .Ansi256
 	}
 	return .Ansi16
+}
+
+// Guesses whether the terminal draws underline shapes (SGR 4:2 … 4:5) and
+// underline colors (SGR 58). A terminal that doesn't may misread them, as
+// `4:3` can come out as underline + italic, so only terminals known to
+// support them say yes: kitty, ghostty, foot, alacritty, wezterm, contour,
+// VS Code, and VTE 0.51.2 or later.
+detect_styled_underlines :: proc(env: Color_Env) -> bool {
+	for prefix in ([]string{"xterm-kitty", "xterm-ghostty", "foot", "alacritty", "wezterm", "contour"}) {
+		if strings.has_prefix(env.term, prefix) {
+			return true
+		}
+	}
+	switch env.term_program {
+	case "WezTerm", "ghostty", "vscode":
+		return true
+	}
+	if v, ok := strconv.parse_int(env.vte_version, 10); ok && v >= 5102 {
+		return true
+	}
+	return false
 }
 
 // `c` as the terminal can show it at `depth`. Colors the depth already
