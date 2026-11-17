@@ -1,6 +1,7 @@
 package buffer
 
 import "core:mem"
+import "core:strings"
 import "core:unicode/utf8"
 import "../layout"
 import "../style"
@@ -19,6 +20,9 @@ Cell :: struct {
 	width:     u8, // display width; 2 for wide chars, whose right-hand cell is blank
 	fg, bg:    style.Color,
 	modifiers: style.Modifiers,
+	underline: style.Underline, // shape, while .Underlined is on
+	underline_color: style.Color, // nil: the text color
+	link:      u32, // OSC 8 hyperlink: 0 for none, else see link_url
 }
 
 EMPTY_CELL :: Cell{symbol = {0 = ' '}, len = 1, width = 1}
@@ -39,10 +43,14 @@ cell_set_symbol :: proc(c: ^Cell, s: string, width: int) {
 	c.width = u8(width)
 }
 
+// Applies everything in `s` but its link, which only a Buffer can hold
+// (set_symbol, set_style and fill take care of it).
 cell_set_style :: proc(c: ^Cell, s: style.Style) {
 	if s.fg != nil { c.fg = s.fg }
 	if s.bg != nil { c.bg = s.bg }
-	c.modifiers = (c.modifiers - s.sub) + s.add
+	if u, ok := s.underline.?; ok { c.underline = u }
+	if s.underline_color != nil { c.underline_color = s.underline_color }
+	c.modifiers = (c.modifiers - s.sub) + style.added_modifiers(s)
 }
 
 // A grid of cells covering `area`. Row-major; cell (x, y) is at
@@ -50,10 +58,15 @@ cell_set_style :: proc(c: ^Cell, s: style.Style) {
 //
 // Drawing (set_symbol, set_string, set_style, fill) only touches cells
 // inside `clip`, which is the whole area unless set_clip narrowed it.
+//
+// The URLs of hyperlinked cells live in the buffer: Cell.link n is
+// `links[n - 1]`. reset forgets them.
 Buffer :: struct {
 	area:      Rect,
 	clip:      Rect,
 	cells:     []Cell,
+	links:     [dynamic]string,
+	link_ids:  map[string]u32,
 	allocator: mem.Allocator,
 }
 
@@ -64,6 +77,9 @@ init :: proc(b: ^Buffer, area: Rect, allocator := context.allocator) -> mem.Allo
 }
 
 destroy :: proc(b: ^Buffer) {
+	clear_links(b)
+	delete(b.links)
+	delete(b.link_ids)
 	delete(b.cells, b.allocator)
 	b^ = {}
 }
@@ -88,12 +104,60 @@ set_clip :: proc(b: ^Buffer, r: Rect) -> (old: Rect) {
 	return
 }
 
-// Blanks every cell and lifts any clip.
+// Blanks every cell, forgets the links and lifts any clip.
 reset :: proc(b: ^Buffer) {
 	b.clip = b.area
 	for &c in b.cells {
 		c = EMPTY_CELL
 	}
+	clear_links(b)
+}
+
+// The id Cell.link uses for `url` in this buffer, adding it if new; 0 for
+// "" or a URL that can't go into an OSC 8 sequence. OSC 8 takes URIs of
+// printable ASCII only (anything else has to be percent-encoded), and a
+// control character would end the sequence early.
+link_id :: proc(b: ^Buffer, url: string) -> u32 {
+	if url == "" {
+		return 0
+	}
+	if id, ok := b.link_ids[url]; ok {
+		return id
+	}
+	for i in 0 ..< len(url) {
+		if url[i] < 0x20 || url[i] > 0x7e {
+			return 0
+		}
+	}
+	if b.links.allocator.procedure == nil {
+		b.links.allocator = b.allocator
+		b.link_ids.allocator = b.allocator
+	}
+	owned, err := strings.clone(url, b.allocator)
+	if err != nil {
+		return 0
+	}
+	append(&b.links, owned)
+	id := u32(len(b.links))
+	b.link_ids[owned] = id
+	return id
+}
+
+// The URL behind a Cell.link id, "" for 0.
+link_url :: proc(b: ^Buffer, id: u32) -> string {
+	if id == 0 || int(id) > len(b.links) {
+		return ""
+	}
+	return b.links[id - 1]
+}
+
+@(private)
+clear_links :: proc(b: ^Buffer) {
+	for url in b.links {
+		delete(url, b.allocator)
+	}
+	clear(&b.links)
+	clear(&b.link_ids)
 }
 
 index_of :: proc(b: ^Buffer, x, y: int) -> int {
@@ -127,8 +191,10 @@ set_symbol :: proc(b: ^Buffer, x, y: int, symbol: string, width: int, s: style.S
 			cell_set_symbol(right, " ", 1)
 		}
 	}
+	link := link_id(b, s.link)
 	cell_set_symbol(c, symbol, width)
 	cell_set_style(c, s)
+	c.link = link
 	if width == 2 {
 		right := get(b, x + 1, y)
 		if right.width == 2 {
@@ -136,6 +202,7 @@ set_symbol :: proc(b: ^Buffer, x, y: int, symbol: string, width: int, s: style.S
 		}
 		cell_set_symbol(right, " ", 1)
 		cell_set_style(right, s)
+		right.link = link
 	}
 	return c
 }
@@ -170,12 +237,16 @@ set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_w
 	return cx
 }
 
-// Applies `s` to every cell in `area` (clipped).
+// Applies `s` to every cell in `area` (clipped). A link in `s` links the
+// cells; without one they keep the link they have.
 set_style :: proc(b: ^Buffer, area: Rect, s: style.Style) {
 	r := layout.rect_intersection(area, b.clip)
+	link := link_id(b, s.link)
 	for y in r.y ..< r.y + r.height {
 		for x in r.x ..< r.x + r.width {
-			cell_set_style(&b.cells[index_of(b, x, y)], s)
+			c := &b.cells[index_of(b, x, y)]
+			cell_set_style(c, s)
+			if link != 0 { c.link = link }
 		}
 	}
 }
@@ -187,12 +258,14 @@ set_style :: proc(b: ^Buffer, area: Rect, s: style.Style) {
 // already is.
 fill :: proc(b: ^Buffer, area: Rect, s: style.Style) {
 	r := layout.rect_intersection(area, b.clip)
+	link := link_id(b, s.link)
 	for y in r.y ..< r.y + r.height {
 		set_symbol(b, r.x, y, " ", 1, s)
 		for x in r.x + 1 ..< r.x + r.width {
 			c := &b.cells[index_of(b, x, y)]
 			cell_set_symbol(c, " ", 1)
 			cell_set_style(c, s)
+			c.link = link
 		}
 	}
 }

@@ -18,6 +18,8 @@ Error :: backend.Error
 Option :: backend.Option
 Options :: backend.Options
 DEFAULT_OPTIONS :: backend.DEFAULT_OPTIONS
+Output_Feature :: buffer.Output_Feature
+Output_Features :: buffer.Output_Features
 
 // Install in main so a panic restores the terminal *before* its message is
 // printed (otherwise the message lands on the alternate screen and is lost):
@@ -72,6 +74,10 @@ Terminal :: struct {
 	// What the diff downsamples colors to. init detects it from the
 	// environment (see detect_color_depth); change it with set_color_depth.
 	color_depth:    Color_Depth,
+	// Underline shapes / colors and hyperlinks, as far as the terminal
+	// shows them. init detects them (see detect_output_features); change
+	// them with set_output_features.
+	output_features: Output_Features,
 
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
@@ -94,6 +100,7 @@ init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Ter
 	t.allocator = allocator
 	t.esc_timeout_ms = DEFAULT_ESC_TIMEOUT_MS
 	t.color_depth = detect_color_depth()
+	t.output_features = detect_output_features()
 	backend.init(&t.backend, opts, allocator) or_return
 	defer if err != .None { backend.deinit(&t.backend) }
 
@@ -158,7 +165,7 @@ end_frame :: proc(t: ^Terminal) -> Error {
 		buffer.reset(front)
 		t.needs_clear = false
 	}
-	buffer.diff(front, back, &b.out, t.color_depth)
+	buffer.diff(front, back, &b.out, t.color_depth, t.output_features)
 	if c := t.frame.cursor; c.visible && layout.rect_contains(back.area, c.x, c.y) {
 		buffer.move_to(&b.out, c.x, c.y)
 		shape := [2]u8{u8(c.shape), u8(c.blink)}
@@ -245,6 +252,40 @@ detect_color_depth :: proc() -> Color_Depth {
 		term         = os.get_env("TERM", context.temp_allocator),
 		term_program = os.get_env("TERM_PROGRAM", context.temp_allocator),
 	})
+}
+
+// Overrides the detected output features. The next frame repaints the
+// whole screen with them.
+set_output_features :: proc(t: ^Terminal, features: Output_Features) {
+	if features != t.output_features {
+		t.output_features = features
+		t.needs_clear = true
+	}
+}
+
+// What the environment says the terminal can show: underline shapes and
+// colors as style.detect_styled_underlines guesses them; hyperlinks
+// everywhere but TERM=dumb and the Linux console (terminals that don't
+// know OSC 8 ignore it).
+detect_output_features :: proc() -> Output_Features {
+	env := style.Color_Env {
+		term         = os.get_env("TERM", context.temp_allocator),
+		term_program = os.get_env("TERM_PROGRAM", context.temp_allocator),
+		vte_version  = os.get_env("VTE_VERSION", context.temp_allocator),
+	}
+	return output_features_for(env)
+}
+
+// detect_output_features for a given environment.
+output_features_for :: proc(env: style.Color_Env) -> Output_Features {
+	f: Output_Features
+	if style.detect_styled_underlines(env) {
+		f += {.Styled_Underlines}
+	}
+	if env.term != "dumb" && env.term != "linux" {
+		f += {.Hyperlinks}
+	}
+	return f
 }
 
 // Restores the terminal and stops the process, as Ctrl+Z does in a shell;

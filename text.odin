@@ -18,6 +18,9 @@ Indexed :: style.Indexed
 Named_Color :: style.Named_Color
 Modifier :: style.Modifier
 Modifiers :: style.Modifiers
+Underline :: style.Underline
+underline :: style.underline
+link :: style.link
 Color_Depth :: style.Color_Depth
 downsample :: style.downsample
 

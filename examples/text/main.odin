@@ -89,6 +89,9 @@ draw :: proc(f: ^hnoss.Frame, wrap: hnoss.Wrap, align: hnoss.Align, scroll: ^int
 
 [b]bold[/] [d]dim[/] [i]italic[/] [u]underline[/] [r]reverse[/] [s]strike[/]
 
+[undercurl ul=#ff5555]undercurl[/] [underdouble]double[/] [underdotted]dotted[/] [underdashed ul=cyan]dashed[/]
+[link=https://odin-lang.org u]odin-lang.org[/] is a link
+
 [red]red[/] [green]green[/] [yellow]yellow[/] [blue]blue[/] [magenta]magenta[/] [cyan]cyan[/]
 [bright_red]bright[/] [@208]@208[/] [#ff66cc]#ff66cc[/]
 
