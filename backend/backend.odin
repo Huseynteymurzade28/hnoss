@@ -35,10 +35,14 @@ Option :: enum u8 {
 	// the app wants Ctrl+Z for itself (e.g. undo). A `kill -TSTP` from
 	// outside is handled with Signal_Handlers either way.
 	Ctrl_Z_Suspends,
+	// At init, ask the terminal what it supports (XTVERSION, DECRQM,
+	// DECRQSS, DA1; see input.CAPS_QUERY) instead of only guessing from
+	// the environment. The answers land in Terminal.caps.
+	Query_Caps,
 }
-Options :: bit_set[Option; u8]
+Options :: bit_set[Option; u16]
 
-DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste, .Kitty_Keyboard, .Ctrl_Z_Suspends}
+DEFAULT_OPTIONS :: Options{.Alt_Screen, .Hide_Cursor, .Signal_Handlers, .Bracketed_Paste, .Kitty_Keyboard, .Ctrl_Z_Suspends, .Query_Caps}
 
 Error :: enum u8 {
 	None,

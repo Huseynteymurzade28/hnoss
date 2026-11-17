@@ -25,6 +25,9 @@ Parser :: struct {
 	// Kitty keyboard protocol flags the terminal reported in reply to
 	// `CSI ? u`, or -1 if it never answered (no support).
 	keyboard_flags: int,
+	// Replies to CAPS_QUERY (see await_replies).
+	caps:             Caps,
+	awaiting_replies: bool,
 }
 
 parser_init :: proc(p: ^Parser, allocator := context.allocator) {
@@ -90,7 +93,7 @@ run :: proc(p: ^Parser, events: ^[dynamic]Event, final: bool, allocator: mem.All
 			break
 		}
 
-		ev, n, st := parse_one(b[i:], final)
+		ev, n, st := parse_one(b[i:], final, p.awaiting_replies)
 		if st == .Incomplete {
 			break
 		}
@@ -99,6 +102,7 @@ run :: proc(p: ^Parser, events: ^[dynamic]Event, final: bool, allocator: mem.All
 		case .Event:      append(events, ev)
 		case .Paste_Start: p.in_paste = true
 		case .Keyboard_Flags: p.keyboard_flags = int(ev.(Key).char)
+		case .Reply:      record_reply(p, b[i - n:i])
 		case .Skip, .Incomplete:
 		}
 	}
@@ -112,12 +116,14 @@ Status :: enum u8 {
 	Incomplete,  // need more bytes
 	Paste_Start,
 	Keyboard_Flags, // reply to the kitty keyboard query; value in Key.char
+	Reply,          // reply to CAPS_QUERY, for record_reply
 }
 
 // Decodes the first event in `b` (len >= 1). `final` means no more bytes
-// will follow, so a prefix must be interpreted as-is.
+// will follow, so a prefix must be interpreted as-is. `dcs` reads ESC P as
+// the start of a DCS reply instead of Alt+Shift+P.
 @(private)
-parse_one :: proc(b: []u8, final: bool) -> (Event, int, Status) {
+parse_one :: proc(b: []u8, final: bool, dcs: bool) -> (Event, int, Status) {
 	if b[0] != 0x1b {
 		return parse_plain(b, final)
 	}
@@ -141,6 +147,13 @@ parse_one :: proc(b: []u8, final: bool) -> (Event, int, Status) {
 	case 0x1b:
 		// ESC ESC: Esc pressed twice, or a slow Alt+Esc. Report the first.
 		return Key{code = .Esc}, 1, .Event
+	case 'P':
+		if dcs {
+			n, st := parse_dcs(b)
+			if st != .Incomplete || !final {
+				return nil, n, st
+			}
+		}
 	}
 	// ESC + key = Alt+key (the "meta sends escape" convention).
 	ev, n, st := parse_plain(b[1:], final)
@@ -263,6 +276,9 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 			return parse_sgr_mouse(params[:nparams], final == 'm'), n, .Event
 		}
 		return nil, n, .Skip
+	}
+	if private == '?' && (final == 'c' || (final == 'y' && len(body) > 0 && body[len(body) - 1] == '$')) {
+		return nil, n, .Reply // DA1, DECRPM
 	}
 	if private == '?' && final == 'u' {
 		// CSI ? flags u: the terminal speaks the kitty keyboard protocol.

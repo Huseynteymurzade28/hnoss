@@ -3,6 +3,7 @@ package hnoss
 import "core:encoding/base64"
 import "core:mem"
 import "core:os"
+import "core:strings"
 import "core:time"
 import "core:unicode/utf8"
 import "backend"
@@ -34,6 +35,10 @@ Mouse :: input.Mouse
 Paste :: input.Paste
 Resize :: input.Resize
 Focus :: input.Focus
+Caps :: input.Caps
+Mode_State :: input.Mode_State
+mode_supported :: input.mode_supported
+caps_version :: input.caps_version
 is_char :: input.is_char
 is_focus :: input.is_focus
 is_key :: input.is_key
@@ -42,6 +47,13 @@ is_key :: input.is_key
 // reported as the Esc key. Long enough for sequences split by a slow link,
 // short enough not to feel laggy.
 DEFAULT_ESC_TIMEOUT_MS :: 25
+
+// How long init waits for the terminal to answer the capability queries.
+// Local terminals answer in a millisecond or two; on a slow link the
+// replies that come later are still picked up by poll_events.
+CAPS_TIMEOUT_MS :: 100
+// After this long without the closing DA1 reply, stop expecting replies.
+CAPS_GIVE_UP_MS :: 2000
 
 // Owns the terminal and two buffers: `front` is what is on screen, `back`
 // is what the current frame draws into. end_frame diffs back against front,
@@ -79,6 +91,18 @@ Terminal :: struct {
 	// them with set_output_features.
 	output_features: Output_Features,
 
+	// What the terminal said about itself (Option.Query_Caps).
+	// `caps.answered` is true once all replies are in; init waits up to
+	// CAPS_TIMEOUT_MS for them. A confirmed truecolor or a terminal known
+	// for styled underlines upgrades color_depth and output_features,
+	// unless set_color_depth / set_output_features chose them.
+	caps:             Caps,
+	caps_sent:        time.Tick,
+	caps_applied:     bool,
+	depth_chosen:     bool,
+	features_chosen:  bool,
+	early_events:     [dynamic]Event, // input that arrived while init waited for caps
+
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
 	cursor_shown:   bool,
 	cursor_shape:   [2]u8, // shape and blink last sent with DECSCUSR; {0, 0} = the terminal default
@@ -112,10 +136,79 @@ init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Ter
 		}
 	}
 	input.parser_init(&t.parser, allocator)
+	t.early_events = make([dynamic]Event, allocator)
+	if .Query_Caps in opts {
+		query_caps(&t)
+	}
 	return t, .None
 }
 
+@(private = "file")
+query_caps :: proc(t: ^Terminal) {
+	backend.write(&t.backend, input.CAPS_QUERY)
+	if backend.flush(&t.backend) != .None {
+		return
+	}
+	input.await_replies(&t.parser)
+	t.caps_sent = time.tick_now()
+	for !t.parser.caps.answered {
+		left := CAPS_TIMEOUT_MS - int(time.duration_milliseconds(time.tick_since(t.caps_sent)))
+		if left <= 0 {
+			break
+		}
+		res, err := backend.read(&t.backend, t.read_buf[:], left)
+		if err != .None {
+			break
+		}
+		// Anything typed meanwhile is kept for the first poll_events.
+		input.feed(&t.parser, t.read_buf[:res.n], &t.early_events, t.allocator)
+	}
+	t.kitty_keyboard = t.parser.keyboard_flags > 0
+	sync_caps(t)
+}
+
+// Copies the parser's caps and, once they are complete, lets them upgrade
+// what the environment guessed.
+@(private = "file")
+sync_caps :: proc(t: ^Terminal) {
+	if t.parser.awaiting_replies && time.duration_milliseconds(time.tick_since(t.caps_sent)) > CAPS_GIVE_UP_MS {
+		input.stop_awaiting_replies(&t.parser)
+	}
+	t.caps = t.parser.caps
+	if !t.caps.answered || t.caps_applied {
+		return
+	}
+	t.caps_applied = true
+	depth, features := upgrade_from_caps(&t.caps, t.color_depth, t.output_features)
+	if !t.depth_chosen && depth != t.color_depth {
+		t.color_depth = depth
+		t.needs_clear = true
+	}
+	if !t.features_chosen && features != t.output_features {
+		t.output_features = features
+		t.needs_clear = true
+	}
+}
+
+// What `caps` adds to the color depth and output features guessed from
+// the environment. It only ever upgrades: NO_COLOR stays No_Color, and a
+// terminal that doesn't answer changes nothing.
+upgrade_from_caps :: proc(caps: ^Caps, depth: Color_Depth, features: Output_Features) -> (Color_Depth, Output_Features) {
+	d, f := depth, features
+	if caps.truecolor && (d == .Ansi16 || d == .Ansi256) {
+		d = .Truecolor
+	}
+	if style.detect_styled_underlines({xtversion = input.caps_version(caps)}) {
+		f += {.Styled_Underlines}
+	}
+	return d, f
+}
+
 deinit :: proc(t: ^Terminal) {
+	for ev in t.early_events {
+		if p, ok := ev.(Paste); ok { delete(p.text, t.allocator) }
+	}
+	delete(t.early_events)
 	input.parser_destroy(&t.parser)
 	for &b in t.buffers {
 		buffer.destroy(&b)
@@ -237,6 +330,7 @@ write_title :: proc(t: ^Terminal, title: string) {
 // Overrides the detected color depth, e.g. from a --color flag. The next
 // frame repaints the whole screen in the new depth.
 set_color_depth :: proc(t: ^Terminal, depth: Color_Depth) {
+	t.depth_chosen = true
 	if depth != t.color_depth {
 		t.color_depth = depth
 		t.needs_clear = true
@@ -257,6 +351,7 @@ detect_color_depth :: proc() -> Color_Depth {
 // Overrides the detected output features. The next frame repaints the
 // whole screen with them.
 set_output_features :: proc(t: ^Terminal, features: Output_Features) {
+	t.features_chosen = true
 	if features != t.output_features {
 		t.output_features = features
 		t.needs_clear = true
@@ -335,6 +430,18 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 	}
 
 	timeout := timeout_ms
+	if len(t.early_events) > 0 {
+		for ev in t.early_events {
+			if p, ok := ev.(Paste); ok {
+				append(&events, Paste{strings.clone(p.text, allocator)})
+				delete(p.text, t.allocator)
+			} else {
+				append(&events, ev)
+			}
+		}
+		resize(&t.early_events, 0)
+		timeout = 0 // they are waiting already
+	}
 	waited_for_esc := false
 	for {
 		res, err := backend.read(&t.backend, t.read_buf[:], timeout)
@@ -369,6 +476,7 @@ poll_events :: proc(t: ^Terminal, timeout_ms: int, allocator := context.temp_all
 				}
 			}
 			t.kitty_keyboard = t.parser.keyboard_flags > 0
+			sync_caps(t)
 		}
 		if resumed && !input.has_pending(&t.parser) {
 			return events[:]
