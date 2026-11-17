@@ -100,7 +100,17 @@ git clone https://github.com/Huseynteymurzade28/hnoss libs/hnoss</code></pre>
 <tr><td><code>.Kitty_Keyboard</code></td><td>on</td><td>Ask for the <a href="https://sw.kovidgoyal.net/kitty/keyboard-protocol/">kitty keyboard protocol</a>: unambiguous keys and instant <kbd>Esc</kbd>. Ignored by terminals that don't support it; <code>term.kitty_keyboard</code> tells you whether it is active.</td></tr>
 <tr><td><code>.Focus_Events</code></td><td>off</td><td>Report when the terminal window gains or loses focus, as <code>Focus</code> events (e.g. to pause an animation).</td></tr>
 <tr><td><code>.Ctrl_Z_Suspends</code></td><td>on</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> suspends the app like in a shell: the terminal is restored and the process stops; <code>fg</code> brings it back with a full redraw. The key is not reported. Leave it out if you want <kbd>Ctrl</kbd>+<kbd>Z</kbd> yourself (e.g. for undo); <code>hnoss.suspend(&amp;term)</code> does the same on demand.</td></tr>
+<tr><td><code>.Query_Caps</code></td><td>on</td><td>Ask the terminal what it supports (see below) instead of only guessing from the environment.</td></tr>
 </table>
+<h3 id="caps">What the terminal supports</h3>
+<p>With <code>.Query_Caps</code>, <code>init</code> sends XTVERSION, DECRQM for synchronized output (<code>?2026</code>) and grapheme clustering (<code>?2027</code>), a DECRQSS read-back of an RGB color, and DA1 last: every terminal answers DA1, so its reply means all answers are in. <code>init</code> waits up to <code>CAPS_TIMEOUT_MS</code> (100 ms; local terminals take a millisecond or two); replies that arrive later, e.g. over a slow ssh link, are picked up by <code>poll_events</code>. The replies never show up as key events, and keys typed meanwhile are not lost.</p>
+<pre><code>c := &amp;term.caps
+<span class="k">if</span> c.answered {
+    fmt.println(hnoss.caps_version(c))            <span class="c">// "kitty(0.39.1)", "" if it didn't say</span>
+    hnoss.mode_supported(c.sync_output)           <span class="c">// .Unknown .Unsupported .Set .Reset .Always_Set .Always_Reset</span>
+    c.grapheme_clustering; c.truecolor; c.sixel
+}</code></pre>
+<p>Once all answers are in, a confirmed truecolor upgrades the color depth, and a terminal that names itself as one known for underline shapes turns on <code>.Styled_Underlines</code> (this works through ssh, where <code>TERM_PROGRAM</code> is lost). Answers only ever upgrade, never downgrade, and they leave alone anything chosen with <code>set_color_depth</code> or <code>set_output_features</code>.</p>
 <pre><code>term, err := hnoss.init(hnoss.DEFAULT_OPTIONS + {.Mouse_Capture})</code></pre>
 <p>The terminal is restored by <code>deinit</code>, when <code>main</code> returns, and on signals and crashes. For panics, install the provided assertion handler: it restores the terminal <em>before</em> the panic message is printed, so you can read it:</p>
 <pre><code>context.assertion_failure_proc = hnoss.assertion_failure_proc</code></pre>

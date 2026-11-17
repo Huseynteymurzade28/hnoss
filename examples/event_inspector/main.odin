@@ -1,7 +1,8 @@
 // Phase 3 example: prints every input event as it arrives.
 // Mouse capture is on, so clicks, drags, motion and the wheel show up too;
 // paste something to see a bracketed Paste event, switch to another window
-// and back for Focus events.
+// and back for Focus events. The bottom line shows what the terminal said
+// about itself (term.caps) and what hnoss made of it.
 //   Ctrl+C  quit   (q is just another key here)
 package main
 
@@ -35,7 +36,7 @@ main :: proc() {
 
 	loop: for {
 		f := hnoss.begin_frame(&term)
-		draw(f, log[:], mouse_x, mouse_y, term.kitty_keyboard)
+		draw(f, log[:], mouse_x, mouse_y, &term)
 		hnoss.end_frame(&term)
 		free_all(context.temp_allocator)
 
@@ -58,14 +59,25 @@ main :: proc() {
 	}
 }
 
-draw :: proc(f: ^hnoss.Frame, log: []string, mouse_x, mouse_y: int, kitty: bool) {
+draw :: proc(f: ^hnoss.Frame, log: []string, mouse_x, mouse_y: int, term: ^hnoss.Terminal) {
+	kitty := term.kitty_keyboard
 	header := style.Style{fg = style.Named_Color.Black, bg = style.Named_Color.Cyan, add = {.Bold}}
 	buffer.set_style(f.buffer, {0, 0, f.area.width, 1}, header)
 	buffer.set_string(f.buffer, 1, 0, "hnoss event inspector  —  press keys, click, scroll, paste  —  Ctrl+C quits", header)
 	kb := "kitty keyboard: on " if kitty else "kitty keyboard: off "
 	buffer.set_string(f.buffer, f.area.width - len(kb), 0, kb, header)
 
-	rows := f.area.height - 1
+	c := &term.caps
+	caps := fmt.tprintf(
+		" %s · sync %v · graphemes %v · truecolor %v · sixel %v → %v %v",
+		hnoss.caps_version(c) if hnoss.caps_version(c) != "" else "(no XTVERSION)" if c.answered else "(no answer)",
+		c.sync_output, c.grapheme_clustering, c.truecolor, c.sixel, term.color_depth, term.output_features,
+	)
+	footer := style.Style{fg = style.Named_Color.Black, bg = style.Named_Color.White}
+	buffer.set_style(f.buffer, {0, f.area.height - 1, f.area.width, 1}, footer)
+	buffer.set_string(f.buffer, 0, f.area.height - 1, caps, footer)
+
+	rows := f.area.height - 2
 	first := max(len(log) - rows, 0)
 	for line, i in log[first:] {
 		num := fmt.tprint(first + i + 1)

@@ -19,6 +19,7 @@ Color_Env :: struct {
 	term:         string, // TERM
 	term_program: string, // TERM_PROGRAM
 	vte_version:  string, // VTE_VERSION (GNOME Terminal, Tilix, … ), e.g. "7600"
+	xtversion:    string, // what the terminal reported to XTVERSION, e.g. "kitty(0.39.1)"
 }
 
 // Guesses the color depth from the environment:
@@ -63,8 +64,14 @@ detect_color_depth :: proc(env: Color_Env) -> Color_Depth {
 // underline colors (SGR 58). A terminal that doesn't may misread them, as
 // `4:3` can come out as underline + italic, so only terminals known to
 // support them say yes: kitty, ghostty, foot, alacritty, wezterm, contour,
-// VS Code, and VTE 0.51.2 or later.
+// VS Code, and VTE 0.51.2 or later, by TERM / TERM_PROGRAM / VTE_VERSION or
+// by the name they give in XTVERSION (which also works through ssh).
 detect_styled_underlines :: proc(env: Color_Env) -> bool {
+	for name in ([]string{"kitty", "ghostty", "foot", "wezterm", "contour"}) {
+		if len(env.xtversion) >= len(name) && strings.equal_fold(env.xtversion[:len(name)], name) {
+			return true
+		}
+	}
 	for prefix in ([]string{"xterm-kitty", "xterm-ghostty", "foot", "alacritty", "wezterm", "contour"}) {
 		if strings.has_prefix(env.term, prefix) {
 			return true
