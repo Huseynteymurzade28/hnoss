@@ -33,6 +33,8 @@ unhandled :: widgets.unhandled
 
 box :: widgets.box
 key_hints :: widgets.key_hints
+status_bar :: widgets.status_bar
+Status_Bar :: widgets.Status_Bar
 key_help :: widgets.key_help
 Key_Hint :: widgets.Key_Hint
 Box_Options :: widgets.Box_Options

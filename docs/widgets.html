@@ -53,6 +53,7 @@
 	<a href="#tooltip">tooltip</a>
 	<h4>Help</h4>
 	<a href="#key_hints">key_hints · key_help</a>
+	<a href="#status_bar">status_bar</a>
 </aside>
 
 <main class="doc">
@@ -413,6 +414,27 @@ events = hnoss.poll_events(&amp;term, hnoss.timeout(&amp;term, -1))</code></pre>
     hnoss.key_help(ui, d, keys)
 }</code></pre>
 <p>Theme: <code>key</code> for the keys; descriptions and separators use <code>muted</code>, headings <code>title</code>.</p>
+</div>
+
+<h2 id="status_bar">status_bar</h2>
+<div class="widget">
+<div class="sig">status_bar :: proc(ui: ^Ui, area: Rect, bar: Status_Bar, separator := " │ ") -&gt; (free: Rect)</div>
+<p>The one-line bar at the bottom of a screen: a mode badge, segments on the left and right, and an optional centered text. When the row is too narrow the right side loses segments from its front, down to the last one, so put the one that matters most last; then the left segments are cut with <code>…</code>. The mode badge always stays. Returns the part of the row nobody drew on (empty when there is a center), so <a href="#key_hints">key hints</a> can share the bar.</p>
+<img src="widgets/status_bar.svg" alt="status bar with key hints in the middle">
+<pre><code>free := hnoss.status_bar(ui, footer, {
+    mode  = <span class="s">"INSERT"</span> <span class="k">if</span> insert <span class="k">else</span> <span class="s">"NORMAL"</span>,
+    left  = {<span class="s">"main.odin"</span>, <span class="s">"git:main"</span>},
+    right = {<span class="s">"utf-8"</span>, <span class="s">"12:4"</span>},
+})
+hnoss.key_hints(ui, hnoss.pad(free, 0, 1, 0, 1), hints)</code></pre>
+<table class="ref">
+<tr><th>Status_Bar</th><th></th></tr>
+<tr><td><code>mode</code></td><td>a badge at the far left, in <code>theme.selected</code></td></tr>
+<tr><td><code>left</code></td><td>segments after the mode</td></tr>
+<tr><td><code>center</code></td><td>centered on the bar, cut to the room between the sides</td></tr>
+<tr><td><code>right</code></td><td>segments at the far right</td></tr>
+</table>
+<p>Theme: <code>status_bar</code> for the row, <code>selected</code> for the mode badge.</p>
 </div>
 </main>
 </div>

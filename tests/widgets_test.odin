@@ -2175,3 +2175,63 @@ widget_tooltip_placement :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, screen_rows(&hs.buf)[4], "╰ inside ──────────╯") // under the inner row, over the border
 }
+
+@(test)
+status_bar_segments :: proc(t: ^testing.T) {
+	bar := widgets.Status_Bar{mode = "NOR", left = {"main.odin", "git:main"}, right = {"utf-8", "12:4"}}
+
+	hs := harness(42, 1)
+	ui := frame(hs)
+	free := widgets.status_bar(ui, ui.area, bar)
+	expect_screen(t, &hs.buf, `
+		 NOR  main.odin │ git:main   utf-8 │ 12:4
+	`)
+	expect_style(t, &hs.buf, style.patch(ui.theme.status_bar, ui.theme.selected), `
+		#####
+	`)
+	// Between "git:main " and " utf-8".
+	testing.expect_value(t, free, layout.Rect{27, 0, 1, 1})
+
+	// Too narrow: the right side loses its front segment first, then the
+	// left side is cut...
+	hs = harness(30, 1)
+	ui = frame(hs)
+	widgets.status_bar(ui, ui.area, bar)
+	expect_screen(t, &hs.buf, `
+		 NOR  main.odin │ git:m… 12:4
+	`)
+	// ...or loses what doesn't fit at all.
+	hs = harness(22, 1)
+	ui = frame(hs)
+	widgets.status_bar(ui, ui.area, bar)
+	expect_screen(t, &hs.buf, `
+		 NOR  main.odin  12:4
+	`)
+	// The mode badge stays even when nothing else fits.
+	hs = harness(6, 1)
+	ui = frame(hs)
+	widgets.status_bar(ui, ui.area, bar)
+	expect_screen(t, &hs.buf, `
+		 NOR
+	`)
+}
+
+@(test)
+status_bar_center :: proc(t: ^testing.T) {
+	hs := harness(20, 1)
+	ui := frame(hs)
+	free := widgets.status_bar(ui, ui.area, {left = {"a"}, center = "mid", right = {"z"}})
+	expect_screen(t, &hs.buf, `
+		 a      mid       z
+	`)
+	testing.expect_value(t, free, layout.Rect{})
+
+	// No room for all of it: cut to what is left between the sides.
+	hs = harness(11, 1)
+	ui = frame(hs)
+	widgets.status_bar(ui, ui.area, {left = {"abc"}, center = "centered", right = {"z"}})
+	expect_screen(t, &hs.buf, `
+		 abc ce… z
+	`)
+}
+
