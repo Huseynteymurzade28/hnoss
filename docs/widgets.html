@@ -39,6 +39,7 @@
 	<a href="#spinner">spinner</a>
 	<a href="#sparkline">sparkline</a>
 	<a href="#bar_chart">bar_chart</a>
+	<a href="#heatmap">heatmap</a>
 	<a href="#graph">graph</a>
 	<h4>Editing</h4>
 	<a href="#input">input</a>
@@ -229,6 +230,30 @@ Bar :: struct { label: string, value: f64 }</div>
 </table>
 <pre><code>hnoss.bar_chart(ui, inner, {{<span class="s">"Bakı"</span>, 32}, {<span class="s">"Gəncə"</span>, 33}, {<span class="s">"Şəki"</span>, 29}},
     {horizontal = <span class="k">true</span>, format = <span class="s">"%v°C"</span>, gradient = {hnoss.hex(0xf9d423), hnoss.hex(0xff4e50)}})</code></pre>
+</div>
+
+<h2 id="heatmap">heatmap</h2>
+<div class="widget">
+<div class="sig">heatmap :: proc(ui: ^Ui, area: Rect, values: []f64, columns: int, opts := Heatmap_Options{})</div>
+<p>A grid of values drawn as colored cells. <code>values</code> is row-major with <code>columns</code> values per row; a NaN is a missing value, drawn as a muted <code>·</code>. Colors come from a gradient between the smallest and largest value, or the scale you fix. Column labels that would overlap the previous one are left out, so label every few columns and leave the rest empty.</p>
+<img src="widgets/heatmap.svg" alt="heatmap of a week of hourly load">
+<pre><code>hnoss.heatmap(ui, area, load[:], 24, {
+    row_labels = {<span class="s">"Mon"</span>, <span class="s">"Tue"</span>, <span class="s">"Wed"</span>, <span class="s">"Thu"</span>, <span class="s">"Fri"</span>, <span class="s">"Sat"</span>, <span class="s">"Sun"</span>},
+    col_labels = hours,
+    legend     = <span class="k">true</span>,
+    format     = <span class="s">"%.0f%%"</span>,
+})</code></pre>
+<table class="ref">
+<tr><th>Heatmap_Options</th><th></th></tr>
+<tr><td><code>min_value max_value</code></td><td>the ends of the scale; <code>nil</code> = from the data. Values outside are clamped</td></tr>
+<tr><td><code>gradient</code></td><td>colors from min to max (default: a cold-to-hot one)</td></tr>
+<tr><td><code>cell_width</code></td><td>cells across one value (default 2, roughly square)</td></tr>
+<tr><td><code>half_blocks</code></td><td>two rows of values per terminal row with <code>▀</code>; row labels then go per terminal row</td></tr>
+<tr><td><code>row_labels col_labels</code></td><td>left of each row, above each column</td></tr>
+<tr><td><code>legend</code></td><td>a row under the grid: min, the gradient, max</td></tr>
+<tr><td><code>format</code></td><td>fmt format for the legend's values</td></tr>
+</table>
+<p>Theme: <code>muted</code> for labels, the legend's values and missing cells.</p>
 </div>
 
 <h2 id="graph">graph</h2>

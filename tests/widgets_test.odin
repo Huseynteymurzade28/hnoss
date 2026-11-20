@@ -1,5 +1,6 @@
 package tests
 
+import "core:math"
 import "core:testing"
 import "core:time"
 import "../buffer"
@@ -2235,3 +2236,57 @@ status_bar_center :: proc(t: ^testing.T) {
 	`)
 }
 
+@(test)
+heatmap_cells_labels_and_missing :: proc(t: ^testing.T) {
+	stops := []style.Rgb{{0, 0, 0}, {255, 255, 255}}
+	nan := math.nan_f64()
+	// 2 rows x 3 columns, one missing.
+	values := []f64{0, 5, 10, nan, 10, 0}
+
+	hs := harness(9, 3)
+	ui := frame(hs)
+	widgets.heatmap(ui, ui.area, values, 3, {gradient = stops, row_labels = {"a", "bb"}, col_labels = {"x", "y", "z"}})
+	expect_screen(t, &hs.buf, `
+		   x y z
+		a
+		bb ·
+	`)
+	cell_bg :: proc(b: ^buffer.Buffer, x, y: int) -> style.Color { return buffer.get(b, x, y).bg }
+	testing.expect_value(t, cell_bg(&hs.buf, 3, 1), style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, cell_bg(&hs.buf, 4, 1), style.Color(style.Rgb{0, 0, 0}))  // 2 cells per value
+	testing.expect_value(t, cell_bg(&hs.buf, 5, 1), style.Color(style.Rgb{128, 128, 128}))
+	testing.expect_value(t, cell_bg(&hs.buf, 5, 2), style.Color(style.Rgb{255, 255, 255}))
+	testing.expect_value(t, cell_bg(&hs.buf, 7, 2), style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, cell_bg(&hs.buf, 3, 2), style.Color(nil)) // missing
+
+	// A fixed scale clamps what falls outside it.
+	ui = frame(hs)
+	widgets.heatmap(ui, ui.area, values, 3, {gradient = stops, min_value = 5, max_value = 7.5})
+	testing.expect_value(t, cell_bg(&hs.buf, 0, 0), style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, cell_bg(&hs.buf, 4, 0), style.Color(style.Rgb{255, 255, 255}))
+}
+
+@(test)
+heatmap_half_blocks_and_legend :: proc(t: ^testing.T) {
+	stops := []style.Rgb{{0, 0, 0}, {255, 255, 255}}
+	// 3 rows x 2 columns: rows 0 and 1 share a terminal row, row 2 is alone.
+	values := []f64{0, 10, 10, 0, 10, math.nan_f64()}
+
+	hs := harness(14, 3)
+	ui := frame(hs)
+	widgets.heatmap(ui, ui.area, values, 2, {gradient = stops, cell_width = 1, half_blocks = true, legend = true})
+	expect_screen(t, &hs.buf, `
+		▀▀
+		▀
+		0           10
+	`)
+	c := buffer.get(&hs.buf, 0, 0)
+	testing.expect_value(t, c.fg, style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, c.bg, style.Color(style.Rgb{255, 255, 255}))
+	c = buffer.get(&hs.buf, 0, 1) // the last row has nothing under it
+	testing.expect_value(t, c.fg, style.Color(style.Rgb{255, 255, 255}))
+	testing.expect_value(t, c.bg, style.Color(nil))
+	// The legend's bar runs from the first stop to the last.
+	testing.expect_value(t, buffer.get(&hs.buf, 2, 2).bg, style.Color(style.Rgb{0, 0, 0}))
+	testing.expect_value(t, buffer.get(&hs.buf, 10, 2).bg, style.Color(style.Rgb{255, 255, 255}))
+}
