@@ -76,6 +76,8 @@ Spinner_Kind :: widgets.Spinner_Kind
 Spinner_Options :: widgets.Spinner_Options
 sparkline :: widgets.sparkline
 bar_chart :: widgets.bar_chart
+heatmap :: widgets.heatmap
+Heatmap_Options :: widgets.Heatmap_Options
 Bar :: widgets.Bar
 Bar_Chart_Options :: widgets.Bar_Chart_Options
 tabs :: widgets.tabs
