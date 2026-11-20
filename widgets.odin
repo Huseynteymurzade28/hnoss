@@ -90,6 +90,16 @@ input_destroy :: widgets.input_destroy
 text_area :: widgets.text_area
 Text_Area_Options :: widgets.Text_Area_Options
 graph :: widgets.graph
+Canvas :: widgets.Canvas
+canvas :: widgets.canvas
+canvas_set :: widgets.canvas_set
+canvas_unset :: widgets.canvas_unset
+canvas_get :: widgets.canvas_get
+canvas_line :: widgets.canvas_line
+canvas_rect :: widgets.canvas_rect
+canvas_circle :: widgets.canvas_circle
+canvas_polygon :: widgets.canvas_polygon
+canvas_draw :: widgets.canvas_draw
 checkbox :: widgets.checkbox
 toggle :: widgets.toggle
 radio :: widgets.radio

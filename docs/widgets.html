@@ -41,6 +41,7 @@
 	<a href="#bar_chart">bar_chart</a>
 	<a href="#heatmap">heatmap</a>
 	<a href="#graph">graph</a>
+	<a href="#canvas">canvas</a>
 	<h4>Editing</h4>
 	<a href="#input">input</a>
 	<a href="#text_area">text_area</a>
@@ -264,6 +265,29 @@ Bar :: struct { label: string, value: f64 }</div>
     max_value = 100,
     gradient  = []hnoss.Rgb{{80, 250, 123}, {241, 250, 140}, {255, 85, 85}},
 })</code></pre>
+</div>
+
+<h2 id="canvas">canvas</h2>
+<div class="widget">
+<div class="sig">canvas :: proc(area: Rect) -&gt; Canvas</div>
+<div class="sig">canvas_draw :: proc(ui: ^Ui, c: ^Canvas)</div>
+<p>A drawing surface of braille dots: each cell holds 2×4 dots, so a canvas is <code>c.width = area.width * 2</code> dots wide and <code>c.height = area.height * 4</code> tall, with (0, 0) at the top left. Dots are about square, so circles look round. Draw on it, then put it on screen with <code>canvas_draw</code>; empty cells are left as they were, so it can go over a background. A cell has one color, that of the last dot set in it; <code>nil</code> is <code>theme.accent</code>. Its memory is from the temp allocator, so make one each frame. <a href="#graph">graph</a> is drawn on one.</p>
+<img src="widgets/canvas.svg" alt="a sun, a star and a house drawn on a braille canvas">
+<pre><code>c := hnoss.canvas(area)
+hnoss.canvas_circle(&amp;c, 20, 12, 8, SUN, fill = <span class="k">true</span>)
+hnoss.canvas_polygon(&amp;c, star[:], STAR, fill = <span class="k">true</span>)   <span class="c">// even-odd: a hole in the middle</span>
+hnoss.canvas_line(&amp;c, 0, ground, c.width - 1, ground, GROUND)
+hnoss.canvas_draw(ui, &amp;c)</code></pre>
+<table class="ref">
+<tr><th>Procedure</th><th></th></tr>
+<tr><td><code>canvas_set(c, x, y, color)</code></td><td>one dot; dots outside the canvas are ignored</td></tr>
+<tr><td><code>canvas_unset(c, x, y)</code> · <code>canvas_get(c, x, y)</code></td><td>clear one dot, or ask whether it is set</td></tr>
+<tr><td><code>canvas_line(c, x0, y0, x1, y1, color)</code></td><td>both ends included</td></tr>
+<tr><td><code>canvas_rect(c, x, y, w, h, color, fill)</code></td><td>the outline, or every dot with <code>fill</code></td></tr>
+<tr><td><code>canvas_circle(c, cx, cy, r, color, fill)</code></td><td>the outline, or the disc</td></tr>
+<tr><td><code>canvas_polygon(c, points, color, fill)</code></td><td>closed back to the first point; filled by the even-odd rule</td></tr>
+</table>
+<p>Theme: <code>accent</code> for dots without a color.</p>
 </div>
 
 <h2 id="input">input</h2>

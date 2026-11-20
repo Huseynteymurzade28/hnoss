@@ -364,31 +364,31 @@ torus :: proc(ui: ^hnoss.Ui, r: hnoss.Rect, t: f64) {
 			if pz > depth[k] { depth[k] = pz; light[k] = lum }
 		}
 	}
-	BITS := [4][2]u8{{0x01, 0x08}, {0x02, 0x10}, {0x04, 0x20}, {0x40, 0x80}}
+	// Each cell takes the color of its brightest dot.
+	c := hnoss.canvas(r)
 	for cy in 0 ..< r.height {
 		for cx in 0 ..< r.width {
-			bits: u8
 			best := -2.0
-			for dy in 0 ..< 4 {
-				for dx in 0 ..< 2 {
-					k := (cy * 4 + dy) * W + cx * 2 + dx
-					if depth[k] > -1e9 && light[k] > -0.25 {
-						bits |= BITS[dy][dx]
-						best = max(best, light[k])
-					}
-				}
+			for k in cell_dots(W, cx, cy) {
+				if depth[k] > -1e9 && light[k] > -0.25 { best = max(best, light[k]) }
 			}
-			if bits == 0 { continue }
-			buf: [4]u8
-			n := encode_braille(&buf, 0x2800 + rune(bits))
-			buffer.set_symbol(ui.buf, r.x + cx, r.y + cy, string(buf[:n]), 1, {fg = hnoss.gradient(DEPTH[:], clamp((best + 0.25) / 1.25, 0, 1))})
+			if best < -1 { continue }
+			color := hnoss.gradient(DEPTH[:], clamp((best + 0.25) / 1.25, 0, 1))
+			for k in cell_dots(W, cx, cy) {
+				if depth[k] > -1e9 && light[k] > -0.25 { hnoss.canvas_set(&c, k % W, k / W, color) }
+			}
 		}
 	}
-	encode_braille :: proc(buf: ^[4]u8, c: rune) -> int {
-		buf[0] = 0xe0 | u8(c >> 12)
-		buf[1] = 0x80 | u8((c >> 6) & 0x3f)
-		buf[2] = 0x80 | u8(c & 0x3f)
-		return 3
+	hnoss.canvas_draw(ui, &c)
+
+	// The indices of the 2×4 dots of cell (cx, cy) in a W-wide dot grid.
+	cell_dots :: proc(W, cx, cy: int) -> (ks: [8]int) {
+		for dy in 0 ..< 4 {
+			for dx in 0 ..< 2 {
+				ks[dy * 2 + dx] = (cy * 4 + dy) * W + cx * 2 + dx
+			}
+		}
+		return
 	}
 }
 

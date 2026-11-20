@@ -1,6 +1,7 @@
 package tests
 
 import "core:math"
+import "core:strings"
 import "core:testing"
 import "core:time"
 import "../buffer"
@@ -2289,4 +2290,121 @@ heatmap_half_blocks_and_legend :: proc(t: ^testing.T) {
 	// The legend's bar runs from the first stop to the last.
 	testing.expect_value(t, buffer.get(&hs.buf, 2, 2).bg, style.Color(style.Rgb{0, 0, 0}))
 	testing.expect_value(t, buffer.get(&hs.buf, 10, 2).bg, style.Color(style.Rgb{255, 255, 255}))
+}
+
+// The dots of a canvas as rows of '#' and '.', for comparing shapes.
+@(private = "file")
+canvas_dots :: proc(c: ^widgets.Canvas) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	for y in 0 ..< c.height {
+		for x in 0 ..< c.width {
+			strings.write_byte(&b, '#' if widgets.canvas_get(c, x, y) else '.')
+		}
+		strings.write_byte(&b, '\n')
+	}
+	return strings.to_string(b)
+}
+
+@(test)
+canvas_dots_to_braille :: proc(t: ^testing.T) {
+	hs := harness(2, 1)
+	ui := frame(hs)
+	c := widgets.canvas(ui.area)
+	testing.expect_value(t, c.width, 4)
+	testing.expect_value(t, c.height, 4)
+	widgets.canvas_set(&c, 0, 0)                          // dot 1
+	widgets.canvas_set(&c, 1, 3)                          // dot 8
+	widgets.canvas_set(&c, 3, 1, style.Rgb{255, 0, 0})    // second cell, dot 5
+	widgets.canvas_set(&c, 9, 9)                          // outside: ignored
+	widgets.canvas_set(&c, -1, 0)
+	widgets.canvas_draw(ui, &c)
+	expect_screen(t, &hs.buf, `
+		⢁⠐
+	`)
+	testing.expect_value(t, buffer.get(&hs.buf, 0, 0).fg, ui.theme.accent.fg)
+	testing.expect_value(t, buffer.get(&hs.buf, 1, 0).fg, style.Color(style.Rgb{255, 0, 0}))
+
+	widgets.canvas_unset(&c, 0, 0)
+	testing.expect(t, !widgets.canvas_get(&c, 0, 0))
+	testing.expect(t, widgets.canvas_get(&c, 1, 3))
+}
+
+@(test)
+canvas_shapes :: proc(t: ^testing.T) {
+	area := layout.Rect{0, 0, 4, 2} // 8 x 8 dots
+	c := widgets.canvas(area)
+	widgets.canvas_line(&c, 0, 0, 7, 3)
+	widgets.canvas_line(&c, 7, 7, 7, 7) // a single dot
+	widgets.canvas_line(&c, -50, -5, -1, -1) // off the canvas
+	testing.expect_value(t, canvas_dots(&c), `##......
+..##....
+....##..
+......##
+........
+........
+........
+.......#
+`)
+
+	c = widgets.canvas(area)
+	widgets.canvas_rect(&c, 1, 1, 4, 3)
+	widgets.canvas_rect(&c, 6, 5, 2, 2, fill = true)
+	testing.expect_value(t, canvas_dots(&c), `........
+.####...
+.#..#...
+.####...
+........
+......##
+......##
+........
+`)
+
+	c = widgets.canvas(area)
+	widgets.canvas_circle(&c, 3, 3, 3)
+	testing.expect_value(t, canvas_dots(&c), `..###...
+.#...#..
+#.....#.
+#.....#.
+#.....#.
+.#...#..
+..###...
+........
+`)
+	c = widgets.canvas(area)
+	widgets.canvas_circle(&c, 3, 3, 2, fill = true)
+	testing.expect_value(t, canvas_dots(&c), `........
+..###...
+.#####..
+.#####..
+.#####..
+..###...
+........
+........
+`)
+}
+
+@(test)
+canvas_polygon_fill_even_odd :: proc(t: ^testing.T) {
+	c := widgets.canvas({0, 0, 4, 2})
+	widgets.canvas_polygon(&c, {{0, 0}, {6, 0}, {6, 6}, {0, 6}}, fill = true)
+	testing.expect_value(t, canvas_dots(&c), `#######.
+#######.
+#######.
+#######.
+#######.
+#######.
+#######.
+........
+`)
+	c = widgets.canvas({0, 0, 4, 2})
+	widgets.canvas_polygon(&c, {{0, 7}, {3, 0}, {7, 7}})
+	testing.expect_value(t, canvas_dots(&c), `...#....
+...##...
+..#.#...
+..#..#..
+.#...#..
+.#....#.
+#.....#.
+########
+`)
 }
