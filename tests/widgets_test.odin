@@ -1190,6 +1190,49 @@ widget_select :: proc(t: ^testing.T) {
 }
 
 @(test)
+widget_select_overlay_scrollbar :: proc(t: ^testing.T) {
+	hs := harness(14, 6)
+	items := []string{"1", "2", "3", "4", "5", "6"}
+	sel: widgets.Select_State
+	area := widgets.Rect{2, 0, 10, 1}
+	opts := widgets.Select_Options{max_rows = 3}
+
+	ui := frame(hs)
+	widgets.focus(ui, &sel)
+	ui = frame(hs, key(.Enter))
+	widgets.select(ui, area, items, &sel, opts)
+	widgets.end(ui)
+	expect_screen(t, &hs.buf, `
+		   1      ▴
+		  ╭────────╮
+		  │› 1    ┃│
+		  │  2    ││
+		  │  3    ││
+		  ╰────────╯
+	`)
+
+	// The thumb follows the options as they scroll.
+	ui = frame(hs, key(.End))
+	widgets.select(ui, area, items, &sel, opts)
+	widgets.end(ui)
+	testing.expect_value(t, sel.offset, 3)
+	expect_screen(t, &hs.buf, `
+		   1      ▴
+		  ╭────────╮
+		  │  4    ││
+		  │  5    ││
+		  │› 6    ┃│
+		  ╰────────╯
+	`)
+
+	// The overlay's scrollbar only draws: a press on it grabs nothing.
+	ui = frame(hs, click(10, 2))
+	widgets.select(ui, area, items, &sel, opts)
+	widgets.end(ui)
+	testing.expect_value(t, hs.mem.active, nil)
+}
+
+@(test)
 widget_select_opens_above_and_inside_a_modal :: proc(t: ^testing.T) {
 	hs := harness(14, 8)
 	items := []string{"Bakı", "Gəncə", "Şəki", "Quba"}

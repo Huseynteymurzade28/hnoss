@@ -64,8 +64,25 @@ scroll_track :: proc(ui: ^Ui, area: Rect, total, visible: int, offset: ^int, ver
 		consume(ui, i)
 	}
 	offset^ = clamp(offset^, 0, max_off)
+	draw_scroll_track(ui, area, total, visible, offset^, vertical)
+	return offset^ != old
+}
 
-	top := 0 if max_off == 0 else ((n - thumb) * offset^ + max_off / 2) / max_off
+// Draws the track and thumb for `offset` without reading any input.
+@(private)
+draw_scroll_track :: proc(ui: ^Ui, area: Rect, total, visible, offset: int, vertical: bool) {
+	if area.height <= 0 || area.width <= 0 {
+		return
+	}
+	start, n := area.y, area.height
+	if !vertical {
+		start, n = area.x, area.width
+	}
+	max_off := max(total - visible, 0)
+	thumb := n if total <= visible else clamp(n * visible / max(total, 1), 1, n)
+	off := clamp(offset, 0, max_off)
+
+	top := 0 if max_off == 0 else ((n - thumb) * off + max_off / 2) / max_off
 	for k in 0 ..< n {
 		on := k >= top && k < top + thumb
 		if vertical {
@@ -76,5 +93,4 @@ scroll_track :: proc(ui: ^Ui, area: Rect, total, visible: int, offset: ^int, ver
 			buffer.set_symbol(ui.buf, start + k, y, "━" if on else "─", 1, ui.theme.scrollbar_thumb if on else ui.theme.scrollbar_track)
 		}
 	}
-	return offset^ != old
 }
