@@ -148,15 +148,11 @@ end :: proc(ui: ^Ui) {
 draw_overlay :: proc(ui: ^Ui, o: Overlay) {
 	clip := buffer.set_clip(ui.buf, ui.buf.area) // not cut by a scroll view
 	defer buffer.set_clip(ui.buf, clip)
-	events := ui.events
-	ui.events = nil // the scrollbar only draws
-	defer ui.events = events
 
 	blank(ui.buf, o.area)
 	rows := box(ui, o.area, "", {focused = true, fill = ui.theme.modal})
-	offset := o.offset
 	if len(o.items) > rows.height {
-		scrollbar(ui, layout.cut_right(&rows, 1), len(o.items), rows.height, &offset)
+		draw_scroll_track(ui, layout.cut_right(&rows, 1), len(o.items), rows.height, o.offset, true)
 	}
 	draw_rows(ui, rows, o.items, o.selected, o.offset, ui.theme.selected, "› ", o.markup)
 }
