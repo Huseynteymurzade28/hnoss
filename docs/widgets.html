@@ -27,6 +27,7 @@
 	<a href="#label">label</a>
 	<a href="#paragraph">paragraph</a>
 	<a href="#scroll_view">scroll_view</a>
+	<a href="#split_pane">split_pane</a>
 	<a href="#log_view">log_view</a>
 	<h4>Selection</h4>
 	<a href="#list">list</a>
@@ -103,6 +104,26 @@ scroll_view_end :: proc(ui: ^Ui, state: ^View_State)</div>
     hnoss.checkbox(ui, {content.x, content.y + i, content.width, 1}, name, &amp;picked[i])
 }
 hnoss.scroll_view_end(ui, &amp;view)</code></pre>
+</div>
+
+<h2 id="split_pane">split_pane</h2>
+<div class="widget">
+<div class="sig">split_pane :: proc(ui: ^Ui, area: Rect, dir: Direction, state: ^Split_State, opts := Split_Options{}) -&gt; (first, second: Rect)</div>
+<p>Two panes side by side (<code>.Horizontal</code>) or stacked (<code>.Vertical</code>), with a one-cell divider the mouse drags. It returns the panes without the divider; call it before drawing into them, so it sees a press on the divider first. <code>state.ratio</code> is the first pane's share, 0..1, so the split keeps its proportions when the window is resized; a zero state starts as an even split. The minimums and maximums are applied to what is drawn without changing <code>ratio</code>, so a pane squeezed by a small window gets its size back when the window grows. When the area can't fit both minimums, the first pane's wins.</p>
+<p>The divider is drawn in <code>border</code>, patched with <code>hover</code> under the pointer, and heavy (<code>┃</code> <code>━</code>) in <code>border_focused</code> while it is focused or dragged. With <code>join</code>, its ends join the lines just outside the area (the border of the box it is in, another split's divider) as <code>┬ ┴ ├ ┤</code> and their double and heavy kin; a title or a corner there is left alone.</p>
+<img src="widgets/split_pane.svg" alt="split_pane: a list beside a preview split in two">
+<p class="keys">Keys (focused): <kbd>←</kbd> <kbd>→</kbd> (<kbd>↑</kbd> <kbd>↓</kbd> when stacked) by a step, with <kbd>Shift</kbd> by ten · <kbd>Home</kbd> <kbd>End</kbd> to the ends · drag the divider · double-click it to center it. Pressing the divider doesn't take the focus; put <code>&amp;state</code> in <code>focus_order</code> to reach it with <kbd>Tab</kbd>.</p>
+<pre><code>inner := hnoss.box(ui, area, <span class="s">"Files"</span>)
+left, right := hnoss.split_pane(ui, inner, .Horizontal, &amp;sidebar, {min_first = 14, join = <span class="k">true</span>})
+top, bottom := hnoss.split_pane(ui, right, .Vertical, &amp;preview, {min_second = 3, join = <span class="k">true</span>})
+hnoss.list(ui, left, names, &amp;files)</code></pre>
+<table class="ref">
+<tr><th>Split_Options</th><th></th></tr>
+<tr><td><code>min_first</code>, <code>min_second</code></td><td>the fewest cells each pane keeps</td></tr>
+<tr><td><code>max_first</code>, <code>max_second</code></td><td>the most cells each pane gets; 0: no limit</td></tr>
+<tr><td><code>step</code></td><td>cells one key moves the divider; 0: 1</td></tr>
+<tr><td><code>join</code></td><td>draw the divider's ends as junctions on the lines around the area</td></tr>
+</table>
 </div>
 
 <h2 id="log_view">log_view</h2>

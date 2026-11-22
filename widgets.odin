@@ -45,6 +45,9 @@ Scroll_State :: widgets.Scroll_State
 scrollbar :: widgets.scrollbar
 hscrollbar :: widgets.hscrollbar
 scroll_view :: widgets.scroll_view
+split_pane :: widgets.split_pane
+Split_State :: widgets.Split_State
+Split_Options :: widgets.Split_Options
 scroll_view_end :: widgets.scroll_view_end
 View_State :: widgets.View_State
 log_view :: widgets.log_view
