@@ -2451,3 +2451,122 @@ canvas_polygon_fill_even_odd :: proc(t: ^testing.T) {
 ########
 `)
 }
+
+@(test)
+widget_split_pane :: proc(t: ^testing.T) {
+	hs := harness(11, 3)
+	st: widgets.Split_State
+
+	// A zero state is an even split of the 10 cells left by the divider.
+	ui := frame(hs)
+	a, b := widgets.split_pane(ui, ui.area, .Horizontal, &st)
+	testing.expect_value(t, st.ratio, 0.5)
+	testing.expect_value(t, a, widgets.Rect{0, 0, 5, 3})
+	testing.expect_value(t, b, widgets.Rect{6, 0, 5, 3})
+	expect_screen(t, &hs.buf, `
+		     │
+		     │
+		     │
+	`)
+
+	// Keys need focus; a press on the divider doesn't take it, and the
+	// press and drag go to the split, not to what is drawn after it.
+	ui = frame(hs, key(.Left))
+	widgets.split_pane(ui, ui.area, .Horizontal, &st)
+	testing.expect_value(t, st.ratio, 0.5)
+	ui = frame(hs, click(5, 1), input.Mouse{kind = .Drag, button = .Left, x = 2, y = 9})
+	a, b = widgets.split_pane(ui, ui.area, .Horizontal, &st)
+	testing.expect_value(t, a.width, 2)
+	testing.expect_value(t, b, widgets.Rect{3, 0, 8, 3})
+	testing.expect_value(t, st.ratio, 0.2)
+	testing.expect(t, !widgets.focused(ui, &st))
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+	expect_rows(t, screen_rows(&hs.buf), "  ┃", "  ┃", "  ┃") // heavy while dragged
+	ui = frame(hs, click(40, 1, .Release))
+	widgets.split_pane(ui, ui.area, .Horizontal, &st)
+	testing.expect(t, hs.mem.active == nil)
+
+	// The minimums hold against the mouse and the keys; a double click
+	// centers it.
+	opts := widgets.Split_Options{min_first = 3, min_second = 4}
+	ui = frame(hs)
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, opts)
+	testing.expect_value(t, a.width, 3)
+	testing.expect_value(t, st.ratio, 0.2) // a shown clamp doesn't change the state
+	widgets.focus(ui, &st)
+	ui = frame(hs, key(.End))
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, opts)
+	testing.expect_value(t, a.width, 6)
+	ui = frame(hs, key(.Left, {.Shift}))
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, opts)
+	testing.expect_value(t, a.width, 3)
+	ui = frame(hs, key(.Up), key(.Right))
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, opts)
+	testing.expect_value(t, a.width, 4)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1) // ↑ is not for a side-by-side split
+	dbl := input.Mouse{kind = .Press, button = .Left, x = 4, y = 0, clicks = 2}
+	ui = frame(hs, dbl, click(4, 0, .Release))
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, opts)
+	testing.expect_value(t, a.width, 5)
+
+	// Maximums, and an area too small for both minimums: the first wins.
+	ui = frame(hs)
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, {max_first = 2})
+	testing.expect_value(t, a.width, 2)
+	ui = frame(hs)
+	a, _ = widgets.split_pane(ui, ui.area, .Horizontal, &st, {max_second = 1})
+	testing.expect_value(t, a.width, 9)
+	ui = frame(hs)
+	a, b = widgets.split_pane(ui, ui.area, .Horizontal, &st, {min_first = 8, min_second = 8})
+	testing.expect_value(t, a.width, 8)
+	testing.expect_value(t, b.width, 2)
+	ui = frame(hs)
+	a, b = widgets.split_pane(ui, {0, 0, 0, 3}, .Horizontal, &st)
+	testing.expect_value(t, b.width, 0)
+}
+
+@(test)
+widget_split_pane_stacked_and_joined :: proc(t: ^testing.T) {
+	hs := harness(12, 6)
+	outer := widgets.Split_State{ratio = 0.3}
+	inner: widgets.Split_State
+	ui := frame(hs)
+	area := widgets.box(ui, ui.area, "T", {border = .Plain})
+	left, right := widgets.split_pane(ui, area, .Horizontal, &outer, {join = true})
+	top, bottom := widgets.split_pane(ui, right, .Vertical, &inner, {join = true})
+	testing.expect_value(t, left, widgets.Rect{1, 1, 3, 4})
+	testing.expect_value(t, top, widgets.Rect{5, 1, 6, 2})
+	testing.expect_value(t, bottom, widgets.Rect{5, 4, 6, 1})
+	expect_screen(t, &hs.buf, `
+		┌ T ┬──────┐
+		│   │      │
+		│   │      │
+		│   ├──────┤
+		│   │      │
+		└───┴──────┘
+	`)
+
+	// The title is left alone; a focused divider is heavy, and so are the
+	// junctions on it.
+	widgets.focus(ui, &outer)
+	ui = frame(hs, key(.Left))
+	area = widgets.box(ui, ui.area, "Title", {border = .Plain})
+	_, right = widgets.split_pane(ui, area, .Horizontal, &outer, {join = true})
+	widgets.split_pane(ui, right, .Vertical, &inner, {join = true})
+	expect_screen(t, &hs.buf, `
+		┌ Title ───┐
+		│  ┃       │
+		│  ┃       │
+		│  ┠───────┤
+		│  ┃       │
+		└──┸───────┘
+	`)
+
+	// Stacked: ↑ ↓ move it, ← → are left alone.
+	widgets.focus(ui, &inner)
+	ui = frame(hs, key(.Down), key(.Left))
+	_, b := widgets.split_pane(ui, ui.area, .Vertical, &inner)
+	testing.expect_value(t, b.height, 1) // 3 of the 5 rows, then one more
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+	expect_rows(t, screen_rows(&hs.buf)[4:5], "━━━━━━━━━━━━")
+}
