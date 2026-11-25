@@ -23,6 +23,19 @@ Cell :: struct {
 	underline: style.Underline, // shape, while .Underlined is on
 	underline_color: style.Color, // nil: the text color
 	link:      u32, // OSC 8 hyperlink: 0 for none, else see link_url
+	image:     Image_Part, // shown instead of the symbol when its id isn't 0
+}
+
+// The most rows or columns of cells an image can cover.
+MAX_IMAGE_CELLS :: 297
+
+// One cell of an image the terminal shows itself (kitty graphics protocol):
+// the part at `col`, `row` of image `id` scaled to `cols` × `rows` cells.
+// Such a cell is drawn, covered, clipped and compared like any other.
+Image_Part :: struct {
+	id:         u32, // 1 ..= 0xffffff, 0 for none
+	cols, rows: u16,
+	col, row:   u16,
 }
 
 EMPTY_CELL :: Cell{symbol = {0 = ' '}, len = 1, width = 1}
@@ -38,6 +51,7 @@ cell_set_symbol :: proc(c: ^Cell, s: string, width: int) {
 		n -= 1
 	}
 	c.symbol = {} // keep unused bytes zero so Cells compare with ==
+	c.image = {}
 	copy(c.symbol[:], s[:n])
 	c.len = u8(n)
 	c.width = u8(width)
@@ -235,6 +249,29 @@ set_string :: proc(b: ^Buffer, x, y: int, s: string, st: style.Style = {}, max_w
 		cx += w
 	}
 	return cx
+}
+
+// Shows image `id`, scaled to cover `area`, in the cells of `area` (clipped).
+// The terminal must have been sent the image and a placement of that size.
+// Text drawn there later covers it. Nothing is drawn if the area is larger
+// than MAX_IMAGE_CELLS either way.
+set_image :: proc(b: ^Buffer, area: Rect, id: u32) {
+	if id == 0 || id > 0xffffff || area.width > MAX_IMAGE_CELLS || area.height > MAX_IMAGE_CELLS {
+		return
+	}
+	r := layout.rect_intersection(area, b.clip)
+	for y in r.y ..< r.y + r.height {
+		for x in r.x ..< r.x + r.width {
+			if c := set_symbol(b, x, y, " ", 1, {}); c != nil {
+				c.image = {id, u16(area.width), u16(area.height), u16(x - area.x), u16(y - area.y)}
+			}
+		}
+	}
+}
+
+// The placement id that stands for an image scaled to cols × rows cells.
+image_placement :: proc(cols, rows: u16) -> u32 {
+	return u32(cols) << 12 | u32(rows)
 }
 
 // Applies `s` to every cell in `area` (clipped). A link in `s` links the
