@@ -202,7 +202,7 @@ parse_plain :: proc(b: []u8, final: bool) -> (Event, int, Status) {
 		return nil, 0, .Incomplete
 	}
 	r, n := utf8.decode_rune(b[:want])
-	if r == utf8.RUNE_ERROR {
+	if r == utf8.RUNE_ERROR && n == 1 { // not U+FFFD itself, which takes 3 bytes
 		return nil, 1, .Skip
 	}
 	return Key{code = .Char, char = r}, n, .Event

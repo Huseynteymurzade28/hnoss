@@ -297,3 +297,9 @@ input_truncated_utf8_keeps_the_next_key :: proc(t: ^testing.T) {
 	got := parse("\xe4a", flush = false)
 	testing.expect_value(t, len(got), 1)
 }
+
+@(test)
+input_replacement_character_is_a_key :: proc(t: ^testing.T) {
+	expect_events(t, "\xef\xbf\xbd", ch(rune(0xfffd)))
+	expect_events(t, "\xed\xa0\x80a", ch('a')) // an encoded surrogate is still invalid
+}
