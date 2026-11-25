@@ -102,3 +102,37 @@ image_terminals_with_placeholders :: proc(t: ^testing.T) {
 		testing.expectf(t, !graphics.supports_placeholders(v), "%s", v)
 	}
 }
+
+@(test)
+image_fit_keeps_proportions :: proc(t: ^testing.T) {
+	check :: proc(t: ^testing.T, w, h, max_cols, max_rows, cw, ch, cols, rows: int, loc := #caller_location) {
+		c, r := graphics.fit_cells(w, h, max_cols, max_rows, cw, ch)
+		testing.expectf(t, c == cols && r == rows, "%dx%d cells, want %dx%d", c, r, cols, rows, loc = loc)
+	}
+	check(t, 600, 900, 20, 40, 0, 0, 20, 15)     // a 2:3 poster, as wide as there is room
+	check(t, 600, 900, 80, 15, 0, 0, 20, 15)     // as tall
+	check(t, 600, 900, 20, 40, 10, 20, 20, 15)
+	check(t, 100, 100, 20, 40, 9, 18, 20, 10)
+	check(t, 100, 100, 20, 40, 10, 25, 20, 8)
+	check(t, 10000, 1, 20, 40, 0, 0, 20, 1)      // never nothing
+	check(t, 1, 10000, 20, 40, 0, 0, 1, 40)
+	check(t, 0, 10, 20, 40, 0, 0, 0, 0)
+	check(t, 10, 10, 0, 40, 0, 0, 0, 0)
+}
+
+@(test)
+image_scale_averages :: proc(t: ^testing.T) {
+	out: [4][4]u8
+	// 4×1 down to 2×1
+	graphics.scale(out[:2], 2, 1, {0, 0, 0, 100, 100, 100, 10, 20, 30, 30, 40, 50}, 4, 1, 3)
+	testing.expect_value(t, out[0], [4]u8{50, 50, 50, 255})
+	testing.expect_value(t, out[1], [4]u8{20, 30, 40, 255})
+	// 1×1 up to 2×2
+	graphics.scale(out[:], 2, 2, {1, 2, 3}, 1, 1, 3)
+	for p in out { testing.expect_value(t, p, [4]u8{1, 2, 3, 255}) }
+	// A transparent pixel's color doesn't count.
+	graphics.scale(out[:1], 1, 1, {200, 0, 0, 255, 0, 250, 0, 0}, 2, 1, 4)
+	testing.expect_value(t, out[0], [4]u8{200, 0, 0, 128})
+	graphics.scale(out[:1], 1, 1, {9, 9, 9, 0}, 1, 1, 4)
+	testing.expect_value(t, out[0], [4]u8{})
+}
