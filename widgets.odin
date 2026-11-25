@@ -1,6 +1,7 @@
 package hnoss
 
 import "core:time"
+import "anim"
 import "widgets"
 
 Ui :: widgets.Ui
@@ -76,6 +77,11 @@ Tree_Item :: widgets.Tree_Item
 Tree_State :: widgets.Tree_State
 Tree_Options :: widgets.Tree_Options
 gauge :: widgets.gauge
+tween :: widgets.tween
+Tween :: anim.Tween
+Ease :: anim.Ease
+ease :: anim.ease
+tween_set :: anim.tween_set
 spinner :: widgets.spinner
 Spinner_Kind :: widgets.Spinner_Kind
 Spinner_Options :: widgets.Spinner_Options
@@ -134,7 +140,7 @@ toast_timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
 }
 
 // How long to wait for input so that what happens by itself still gets its
-// frame on time: toasts sliding and expiring, a tooltip opening. `wait_ms`
+// frame on time: toasts sliding and expiring, a tooltip opening, tweens. `wait_ms`
 // when nothing is pending, otherwise at most that (-1: no limit of your own).
 //
 //	events = hnoss.poll_events(&term, hnoss.timeout(&term, -1))

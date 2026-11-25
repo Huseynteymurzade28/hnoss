@@ -65,6 +65,7 @@ Memory :: struct {
 	hover:   rawptr,  // widget under the pointer (see `hovered`)
 	pointer: Pointer, // where the mouse was last reported
 	tooltip: Tooltip_State, // the tooltip waiting to open or showing (see `tooltip`)
+	animating: bool, // something drawn last frame is still moving (see `tween`)
 }
 
 // The mouse position, kept from the events of every frame.
@@ -125,6 +126,7 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 	}
 	mem.modal = nil
 	mem.popup = nil
+	mem.animating = false
 	if theme.background != {} {
 		buffer.fill(buf, buf.area, theme.background)
 	}

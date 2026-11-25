@@ -4,6 +4,7 @@ import "core:math"
 import "core:strings"
 import "core:testing"
 import "core:time"
+import "../anim"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -2632,4 +2633,31 @@ keymap_hints_follow_rebinding :: proc(t: ^testing.T) {
 		            o  open
 		            q  quit
 	`)
+}
+
+@(test)
+widget_tween_asks_for_frames_while_it_moves :: proc(t: ^testing.T) {
+	tw: anim.Tween
+	hs := harness(4, 1)
+
+	ui := frame(hs)
+	testing.expect_value(t, widgets.tween(ui, &tw, 0.5), 0.5)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), -1)
+
+	start := ui.now
+	ui = frame(hs)
+	ui.now = start
+	testing.expect_value(t, widgets.tween(ui, &tw, 1), 0.5)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), 16)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, 5), 5)
+
+	ui = frame(hs)
+	ui.now = {start._nsec + i64(anim.DEFAULT_DURATION / 2)}
+	v := widgets.tween(ui, &tw, 1)
+	testing.expect(t, v > 0.5 && v < 1)
+
+	ui = frame(hs)
+	ui.now = {start._nsec + i64(anim.DEFAULT_DURATION)}
+	testing.expect_value(t, widgets.tween(ui, &tw, 1), 1)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), -1)
 }
