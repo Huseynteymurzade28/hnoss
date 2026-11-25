@@ -2570,3 +2570,66 @@ widget_split_pane_stacked_and_joined :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
 	expect_rows(t, screen_rows(&hs.buf)[4:5], "━━━━━━━━━━━━")
 }
+
+@(test)
+keymap_actions_consume_their_keys :: proc(t: ^testing.T) {
+	km: input.Keymap
+	input.keymap_init(&km, {{"q", "quit", ""}, {"g g", "top", ""}}, context.temp_allocator)
+	hs := harness(20, 2)
+
+	ui := frame(hs, ch('q'), ch('x'))
+	got := widgets.actions(ui, &km)
+	testing.expect(t, len(got) == 1 && got[0] == "quit")
+	testing.expect_value(t, len(widgets.unhandled(ui)), 1)
+
+	// A chord across frames.
+	ui = frame(hs, ch('g'))
+	testing.expect_value(t, len(widgets.actions(ui, &km)), 0)
+	testing.expect_value(t, len(widgets.unhandled(ui)), 0)
+	testing.expect_value(t, widgets.keymap_timeout(&km, ui.now, -1), 1001)
+	testing.expect_value(t, widgets.keymap_timeout(&km, ui.now, 16), 16)
+	ui = frame(hs, ch('g'))
+	got = widgets.actions(ui, &km)
+	testing.expect(t, len(got) == 1 && got[0] == "top")
+	testing.expect_value(t, widgets.keymap_timeout(&km, ui.now, -1), -1)
+
+	// Keys a widget used set nothing off.
+	st: widgets.Input_State
+	defer widgets.input_destroy(&st)
+	ui = frame(hs, ch('q'))
+	widgets.focus(ui, &st)
+	widgets.input(ui, ui.area, &st)
+	testing.expect_value(t, len(widgets.actions(ui, &km)), 0)
+}
+
+@(test)
+keymap_hints_follow_rebinding :: proc(t: ^testing.T) {
+	km: input.Keymap
+	input.keymap_init(&km, {
+		{"", "", "File"},
+		{"Ctrl+S", "save", "save"},
+		{"F2", "save", ""},
+		{"F9", "debug", ""},
+		{"", "open", "open"},
+		{"q", "quit", "quit"},
+	}, context.temp_allocator)
+	hs := harness(30, 5)
+	ui := frame(hs)
+	widgets.key_help(ui, ui.area, widgets.keymap_hints(&km))
+	expect_screen(t, &hs.buf, `
+		File
+		Ctrl+S, F2  save
+		         q  quit
+	`)
+
+	input.keymap_rebind(&km, "save", "Ctrl+X Ctrl+S")
+	input.keymap_rebind(&km, "open", "o")
+	ui = frame(hs)
+	widgets.key_help(ui, ui.area, widgets.keymap_hints(&km))
+	expect_screen(t, &hs.buf, `
+		File
+		Ctrl+X Ctrl+S  save
+		            o  open
+		            q  quit
+	`)
+}
