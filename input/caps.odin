@@ -178,7 +178,7 @@ MAX_DCS :: 256
 @(private)
 parse_dcs :: proc(b: []u8) -> (int, Status) {
 	for i in 2 ..< min(len(b), MAX_DCS) {
-		if b[i] == 0x1b && i + 1 < len(b) && b[i + 1] == '\\' {
+		if b[i] == 0x1b && i + 1 < min(len(b), MAX_DCS) && b[i + 1] == '\\' {
 			return i + 2, .Reply
 		}
 	}
