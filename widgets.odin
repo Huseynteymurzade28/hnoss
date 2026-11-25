@@ -77,6 +77,11 @@ Tree_Item :: widgets.Tree_Item
 Tree_State :: widgets.Tree_State
 Tree_Options :: widgets.Tree_Options
 gauge :: widgets.gauge
+image :: widgets.image
+image_fit :: widgets.image_fit
+image_changed :: widgets.image_changed
+image_destroy :: widgets.image_destroy
+Image :: widgets.Image
 tween :: widgets.tween
 Tween :: anim.Tween
 Ease :: anim.Ease
