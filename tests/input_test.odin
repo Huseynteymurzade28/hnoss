@@ -263,3 +263,11 @@ input_sgr_mouse_missing_params_is_skipped :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[<0;5Ma", ch('a'))
 	expect_events(t, "\x1b[<?ma", ch('a'))
 }
+
+// Back and forward are not the left and middle buttons.
+@(test)
+input_sgr_mouse_extra_buttons_are_skipped :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<128;3;3M\x1b[<128;3;3ma", ch('a'))
+	expect_events(t, "\x1b[<129;3;3Ma", ch('a'))
+	expect_events(t, "\x1b[<160;3;3Ma", ch('a')) // dragging with one
+}
