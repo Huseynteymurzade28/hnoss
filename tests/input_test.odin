@@ -277,3 +277,11 @@ input_sgr_mouse_press_needs_a_button :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[<3;2;2Ma", ch('a'))
 	expect_events(t, "\x1b[<3;2;2m", input.Mouse{kind = .Release, x = 1, y = 1}) // a release may not know
 }
+
+@(test)
+input_csi_u_rejects_invalid_codepoints :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[55296ua", ch('a'))   // U+D800, a surrogate
+	expect_events(t, "\x1b[57343ua", ch('a'))   // U+DFFF
+	expect_events(t, "\x1b[1114112ua", ch('a')) // U+110000
+	expect_events(t, "\x1b[1114111u", ch(rune(0x10ffff)))
+}

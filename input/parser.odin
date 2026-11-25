@@ -241,6 +241,11 @@ MAX_CSI :: 64
 @(private)
 MAX_PARAMS :: 8
 
+// Larger values are capped here: past every codepoint, so a capped one is
+// still invalid.
+@(private)
+MAX_PARAM :: 1 << 24
+
 // CSI: ESC [ <private?> <params 0x30-0x3f> <intermediates 0x20-0x2f> <final 0x40-0x7e>
 @(private)
 parse_csi :: proc(b: []u8) -> (Event, int, Status) {
@@ -358,7 +363,7 @@ parse_params :: proc(body: []u8, out: ^[MAX_PARAMS]int) -> int {
 	for c in body {
 		switch c {
 		case '0' ..= '9':
-			if !sub { cur = min(cur * 10 + int(c - '0'), 1 << 20) }
+			if !sub { cur = min(cur * 10 + int(c - '0'), MAX_PARAM) }
 		case ';':
 			if n < MAX_PARAMS { out[n] = cur }
 			n += 1
@@ -402,8 +407,8 @@ csi_u_key :: proc(code: int, mods: Key_Modifiers) -> (Key, bool) {
 	case 57376 ..= 57398, 57344 ..= 57375, 57427 ..= 57454:
 		return {}, false // F13+, lock/media/modifier keys: nothing to map to
 	}
-	if code < 0x20 || code > 0x10ffff {
-		return {}, false
+	if code < 0x20 || !utf8.valid_rune(rune(code)) {
+		return {}, false // control codes, surrogates, past U+10FFFF
 	}
 	return {code = .Char, char = rune(code), mods = mods}, true
 }
