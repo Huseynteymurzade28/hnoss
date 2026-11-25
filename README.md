@@ -13,9 +13,11 @@
   <a href="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml"><img src="https://github.com/Huseynteymurzade28/hnoss/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
-![hnoss demo](docs/demo.gif)
+<p align="center">
+  <a href="examples/demo/main.odin"><img src="docs/demo.gif" width="958" alt="hnoss demo: plasma, a rotating torus, live graphs, a list, a table and a command line in one terminal"></a>
+</p>
 
-<p align="center"><sub><code>examples/demo</code>: plasma, a shaded 3D torus on a braille canvas, live graphs and scripted input, at 60 fps in ~2 ms a frame.</sub></p>
+<p align="center"><sub><code>examples/demo</code>: plasma, a shaded 3D torus on a braille canvas, live graphs and scripted input, at 60 fps in ~2 ms a frame. Try it: <code>./build.sh run demo</code></sub></p>
 
 ![hnoss monitor](docs/monitor-odlar-yurdu.svg)
 
