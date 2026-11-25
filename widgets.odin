@@ -36,6 +36,8 @@ key_hints :: widgets.key_hints
 status_bar :: widgets.status_bar
 Status_Bar :: widgets.Status_Bar
 key_help :: widgets.key_help
+actions :: widgets.actions
+keymap_hints :: widgets.keymap_hints
 Key_Hint :: widgets.Key_Hint
 Box_Options :: widgets.Box_Options
 label :: widgets.label
@@ -138,5 +140,12 @@ toast_timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
 //	events = hnoss.poll_events(&term, hnoss.timeout(&term, -1))
 timeout :: proc(t: ^Terminal, wait_ms: int) -> int {
 	return widgets.timeout(&t.widget_memory, time.tick_now(), wait_ms)
+}
+
+// Like `timeout`, for a chord being typed in `km`. They combine:
+//
+//	events = hnoss.poll_events(&term, hnoss.keymap_timeout(&km, hnoss.timeout(&term, -1)))
+keymap_timeout :: proc(km: ^Keymap, wait_ms: int) -> int {
+	return widgets.keymap_timeout(km, time.tick_now(), wait_ms)
 }
 Graph_Options :: widgets.Graph_Options
