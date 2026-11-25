@@ -271,3 +271,9 @@ input_sgr_mouse_extra_buttons_are_skipped :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[<129;3;3Ma", ch('a'))
 	expect_events(t, "\x1b[<160;3;3Ma", ch('a')) // dragging with one
 }
+
+@(test)
+input_sgr_mouse_press_needs_a_button :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<3;2;2Ma", ch('a'))
+	expect_events(t, "\x1b[<3;2;2m", input.Mouse{kind = .Release, x = 1, y = 1}) // a release may not know
+}

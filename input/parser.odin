@@ -445,6 +445,9 @@ parse_sgr_mouse :: proc(params: []int, release: bool) -> (m: Mouse, ok: bool) {
 			m.button = Mouse_Button(int(Mouse_Button.Left) + low)
 		}
 	case:
+		if low == 3 && !release {
+			return // a press of no button
+		}
 		m.kind = .Release if release else .Press
 		if low != 3 {
 			m.button = Mouse_Button(int(Mouse_Button.Left) + low)
