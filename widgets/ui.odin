@@ -67,6 +67,7 @@ Memory :: struct {
 	hover:   rawptr,  // widget under the pointer (see `hovered`)
 	pointer: Pointer, // where the mouse was last reported
 	tooltip: Tooltip_State, // the tooltip waiting to open or showing (see `tooltip`)
+	images:  Images, // in the terminal (see `image`)
 	animating: bool, // something drawn last frame is still moving (see `tween`)
 }
 

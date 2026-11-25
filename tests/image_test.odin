@@ -6,6 +6,7 @@ import "core:testing"
 import "../buffer"
 import "../graphics"
 import "../style"
+import "../widgets"
 
 @(private = "file")
 diff_bytes :: proc(prev, next: ^buffer.Buffer, depth := style.Color_Depth.Truecolor) -> string {
@@ -135,4 +136,146 @@ image_scale_averages :: proc(t: ^testing.T) {
 	testing.expect_value(t, out[0], [4]u8{200, 0, 0, 128})
 	graphics.scale(out[:1], 1, 1, {9, 9, 9, 0}, 1, 1, 4)
 	testing.expect_value(t, out[0], [4]u8{})
+}
+
+// A w × h image of one color.
+@(private = "file")
+plain :: proc(w, h: int, channels := 3) -> widgets.Image {
+	px := make([]u8, w * h * channels, context.temp_allocator)
+	for &p in px { p = 200 }
+	return {pixels = px, width = w, height = h, channels = channels}
+}
+
+@(private = "file")
+Shown :: struct {
+	img:   widgets.Image,
+	area:  widgets.Rect,
+	drawn: widgets.Rect,
+	modal: bool,
+}
+
+@(private = "file")
+draw_image :: proc(ui: ^widgets.Ui, s: ^Shown) {
+	s.drawn = widgets.image(ui, s.area, &s.img)
+	if s.modal { widgets.modal(ui, {1, 0, 4, 2}, &s.modal) }
+}
+
+@(private = "file")
+kitty_driver :: proc(w, h: int) -> ^Driver {
+	d := driver(w, h)
+	d.mem.images.kitty = true
+	d.mem.images.sent.allocator = context.temp_allocator
+	d.mem.images.out.allocator = context.temp_allocator
+	return d
+}
+
+// What the frame writes before and after it is drawn.
+@(private = "file")
+end_images :: proc(d: ^Driver, cache := widgets.IMAGE_CACHE_BYTES) -> (before, after: string) {
+	a := make([dynamic]u8, context.temp_allocator)
+	b := make([dynamic]u8, context.temp_allocator)
+	widgets.images_flush(&d.mem.images, &a)
+	widgets.images_end_frame(&d.mem.images, &b, cache)
+	return string(a[:]), string(b[:])
+}
+
+@(test)
+widget_image_half_blocks :: proc(t: ^testing.T) {
+	d := driver(6, 3)
+	s := Shown{img = {pixels = {255, 0, 0, 255, 0, 0, 255, 255}, width = 1, height = 2, channels = 4}, area = {0, 0, 6, 3}}
+	defer widgets.image_destroy(&s.img)
+	drive(t, d, "", &s, draw_image)
+	testing.expect_value(t, s.drawn, widgets.Rect{1, 0, 3, 3})
+	expect_screen(t, &d.buf, `
+		 ▀▀▀
+		 ▀▀▀
+		 ▀▀▀
+	`)
+	testing.expect_value(t, buffer.get(&d.buf, 1, 0).fg, style.Rgb{255, 0, 0})
+	testing.expect_value(t, buffer.get(&d.buf, 1, 2).bg, style.Rgb{0, 0, 255})
+
+	// Transparent: nothing there.
+	s.img.pixels = {255, 0, 0, 0, 0, 0, 255, 255}
+	widgets.image_changed(&s.img)
+	s.area.height = 1
+	drive(t, d, "", &s, draw_image)
+	expect_screen(t, &d.buf, "  ▄")
+
+	s.img.pixels = s.img.pixels[:7] // too few
+	drive(t, d, "", &s, draw_image)
+	expect_screen(t, &d.buf, "")
+	testing.expect_value(t, s.drawn.width, 0)
+}
+
+@(test)
+widget_image_is_sent_once :: proc(t: ^testing.T) {
+	d := kitty_driver(6, 3)
+	s := Shown{img = plain(2, 2), area = {0, 0, 6, 2}}
+	drive(t, d, "", &s, draw_image)
+	testing.expect_value(t, s.drawn, widgets.Rect{1, 0, 4, 2})
+	testing.expect_value(t, buffer.get(&d.buf, 4, 1).image, buffer.Image_Part{s.img.id, 4, 2, 3, 1})
+	before, after := end_images(d)
+	testing.expect(t, strings.has_prefix(before, "\x1b_Ga=t,q=2,i=1,f=24,s=2,v=2,m=0;"))
+	testing.expect(t, strings.has_suffix(before, "\x1b_Ga=p,U=1,q=2,i=1,p=16386,c=4,r=2\x1b\\"))
+	testing.expect_value(t, after, "")
+
+	drive(t, d, "", &s, draw_image)
+	before, _ = end_images(d)
+	testing.expect_value(t, before, "")
+
+	s.area = {0, 0, 2, 1} // another size: only placed
+	drive(t, d, "", &s, draw_image)
+	before, _ = end_images(d)
+	testing.expect_value(t, before, "\x1b_Ga=p,U=1,q=2,i=1,p=8193,c=2,r=1\x1b\\")
+
+	widgets.image_changed(&s.img)
+	drive(t, d, "", &s, draw_image)
+	before, _ = end_images(d)
+	testing.expect(t, strings.has_prefix(before, "\x1b_Ga=t,q=2,i=2,"))
+
+	widgets.images_forget(&d.mem.images)
+	drive(t, d, "", &s, draw_image)
+	before, _ = end_images(d)
+	testing.expect(t, strings.has_prefix(before, "\x1b_Ga=t,q=2,i=2,"))
+}
+
+@(test)
+widget_image_under_a_modal :: proc(t: ^testing.T) {
+	d := kitty_driver(6, 2)
+	s := Shown{img = plain(2, 2), area = {0, 0, 6, 2}, modal = true}
+	s.area.width = 4
+	drive(t, d, "", &s, draw_image)
+	testing.expect(t, buffer.get(&d.buf, 0, 0).image.id != 0)
+	testing.expect_value(t, buffer.get(&d.buf, 1, 0).image.id, 0)
+	testing.expect_value(t, buffer.cell_symbol(buffer.get(&d.buf, 1, 0)), "╭")
+}
+
+@(test)
+widget_image_cache :: proc(t: ^testing.T) {
+	d := kitty_driver(6, 2)
+	imgs: [3]Shown
+	for &s in imgs { s = {img = plain(10, 10), area = {0, 0, 4, 2}} } // 300 bytes each
+	for &s in imgs {
+		drive(t, d, "", &s, draw_image)
+		_, after := end_images(d, 600)
+		testing.expect_value(t, after, "")
+	}
+	drive(t, d, "", &imgs[1], draw_image)
+	_, after := end_images(d, 300) // 1 and 3 are off screen, 1 the longest
+	testing.expect_value(t, after, "\x1b_Ga=d,d=I,q=2,i=1\x1b\\")
+	drive(t, d, "", &imgs[0], draw_image) // back: sent again
+	before, _ := end_images(d)
+	testing.expect(t, strings.has_prefix(before, "\x1b_Ga=t,q=2,i=1,"))
+
+	// Many sizes: the placements not used lately go.
+	s := &imgs[0]
+	for w in 1 ..= 12 {
+		s.area = {0, 0, w, 100}
+		drive(t, d, "", s, draw_image)
+		before, _ = end_images(d)
+	}
+	testing.expect_value(t, strings.count(before, "a=d,d=i,"), 1)
+	out := make([dynamic]u8, context.temp_allocator)
+	widgets.images_delete(&d.mem.images, &out)
+	testing.expect_value(t, strings.count(string(out[:]), "d=I"), 3)
 }
