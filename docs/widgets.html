@@ -34,6 +34,7 @@
 	<a href="#table">table</a>
 	<a href="#tree">tree</a>
 	<a href="#tabs">tabs</a>
+	<a href="#stepper">stepper</a>
 	<a href="#scrollbar">scrollbar</a>
 	<h4>Data</h4>
 	<a href="#gauge">gauge</a>
@@ -201,6 +202,28 @@ hnoss.tree(ui, inner, items, &amp;state, {scrollbar = <span class="k">true</span
 <p>A row of markup titles. The <code>^int</code> is the state.</p>
 <img src="widgets/tabs.svg" alt="tabs">
 <p class="keys">Keys (focused): <kbd>←</kbd><kbd>→</kbd> or <kbd>h</kbd><kbd>l</kbd>, <kbd>Home</kbd> <kbd>End</kbd> · click a title.</p>
+</div>
+
+<h2 id="stepper">stepper</h2>
+<div class="widget">
+<div class="sig">stepper :: proc(ui: ^Ui, area: Rect, steps: []string, state: ^Stepper_State, opts := Stepper_Options{}) -&gt; (changed: bool)
+stepper_next :: proc(state: ^Stepper_State, count: int, opts := Stepper_Options{}) -&gt; (moved: bool)
+stepper_back :: proc(state: ^Stepper_State) -&gt; (moved: bool)
+stepper_go :: proc(state: ^Stepper_State, step, count: int, opts := Stepper_Options{}) -&gt; (there: bool)</div>
+<p>The steps of a wizard (markup): done, current and still to do. When they don't fit, only the current one is shown, as <code>● 2/3 Plan</code>. <code>state.current</code> is the step to draw the fields of, and <code>len(steps)</code> when every step is done.</p>
+<p>Going on asks <code>opts.validate</code> about each step that is left. The first that has something wrong with it becomes the current one, marked <code>✗</code>, with the message on the second row of <code>area</code> until it is put right. Going back is always possible. Focused: <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd>; a click goes to a step. Buttons call <code>stepper_next</code> and <code>stepper_back</code>. Call <code>stepper</code> after the step's fields, so the message is about what they hold this frame.</p>
+<img src="widgets/stepper.svg" alt="stepper, blocked on a missing name">
+<pre><code>opts := hnoss.Stepper_Options{
+    validate = <span class="k">proc</span>(step: int, data: rawptr) -&gt; string {
+        form := (^Form)(data)
+        <span class="k">if</span> step == 0 &amp;&amp; hnoss.input_text(&amp;form.name) == <span class="s">""</span> { <span class="k">return</span> <span class="s">"Your name is missing."</span> }
+        <span class="k">return</span> <span class="s">""</span>
+    },
+    data = &amp;form,
+}
+<span class="k">if</span> hnoss.button(ui, next, <span class="s">"Next"</span>, &amp;form.next) { hnoss.stepper_next(&amp;form.steps, len(STEPS), opts) }
+hnoss.stepper(ui, head, STEPS, &amp;form.steps, opts)</code></pre>
+<p>Theme: <code>success</code> for what is done, <code>accent</code> and <code>title</code> for the current step, <code>error</code> when it is blocked, <code>muted</code> for the rest.</p>
 </div>
 
 <h2 id="scrollbar">scrollbar</h2>
