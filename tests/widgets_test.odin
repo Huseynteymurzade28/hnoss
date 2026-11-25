@@ -4,6 +4,7 @@ import "core:math"
 import "core:strings"
 import "core:testing"
 import "core:time"
+import "../anim"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -2632,4 +2633,63 @@ keymap_hints_follow_rebinding :: proc(t: ^testing.T) {
 		            o  open
 		            q  quit
 	`)
+}
+
+@(test)
+widget_tween_asks_for_frames_while_it_moves :: proc(t: ^testing.T) {
+	tw: anim.Tween
+	hs := harness(4, 1)
+
+	ui := frame(hs)
+	testing.expect_value(t, widgets.tween(ui, &tw, 0.5), 0.5)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), -1)
+
+	start := ui.now
+	ui = frame(hs)
+	ui.now = start
+	testing.expect_value(t, widgets.tween(ui, &tw, 1), 0.5)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), 16)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, 5), 5)
+
+	ui = frame(hs)
+	ui.now = {start._nsec + i64(anim.DEFAULT_DURATION / 2)}
+	v := widgets.tween(ui, &tw, 1)
+	testing.expect(t, v > 0.5 && v < 1)
+
+	ui = frame(hs)
+	ui.now = {start._nsec + i64(anim.DEFAULT_DURATION)}
+	testing.expect_value(t, widgets.tween(ui, &tw, 1), 1)
+	testing.expect_value(t, widgets.timeout(&hs.mem, ui.now, -1), -1)
+}
+
+@(test)
+widget_modal_fades_in :: proc(t: ^testing.T) {
+	hs := harness(12, 5)
+	FADE :: 100 * time.Millisecond
+	open := true
+	start := time.tick_now()
+	// The color behind the dialog, `ms` after it opened.
+	behind :: proc(hs: ^Harness, open: ^bool, now: time.Tick) -> style.Color {
+		ui := frame(hs)
+		ui.now = now
+		buffer.set_string(&hs.buf, 0, 0, "x", {fg = style.Rgb{90, 90, 90}})
+		if open^ { widgets.modal(ui, {4, 1, 6, 3}, open, "", FADE) }
+		return buffer.get(&hs.buf, 0, 0).fg
+	}
+	at :: proc(start: time.Tick, ms: int) -> time.Tick { return {start._nsec + i64(ms) * 1e6} }
+
+	for _ in 0 ..< 2 { // again when it is opened again
+		testing.expect_value(t, behind(hs, &open, start), style.Rgb{90, 90, 90})
+		testing.expect_value(t, widgets.timeout(&hs.mem, start, -1), 16)
+		c := behind(hs, &open, at(start, 30)).(style.Rgb)
+		testing.expectf(t, c.r > 30 && c.r < 90, "%v", c)
+		testing.expect_value(t, behind(hs, &open, at(start, 100)), style.Rgb{30, 30, 30})
+		testing.expect_value(t, widgets.timeout(&hs.mem, at(start, 100), -1), -1)
+
+		open = false
+		behind(hs, &open, at(start, 120))
+		behind(hs, &open, at(start, 130))
+		open = true
+		start = at(start, 200)
+	}
 }

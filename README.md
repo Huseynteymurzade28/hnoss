@@ -87,7 +87,7 @@ main :: proc() {
 
 ```sh
 ./build.sh                 # check + tests + all examples into bin/
-./build.sh run demo        # or: showcase, monitor, plasma, text, layout, keymap, event_inspector, w_<widget>
+./build.sh run demo        # or: showcase, monitor, plasma, text, layout, keymap, tween, event_inspector, w_<widget>
 ```
 
 Runs on Linux, macOS (Intel and Apple Silicon) and FreeBSD; CI builds and tests all three. Windows is [#5](https://github.com/Huseynteymurzade28/hnoss/issues/5). `examples/monitor` uses `/proc` on Linux and `sysctl`/`ps` on FreeBSD.

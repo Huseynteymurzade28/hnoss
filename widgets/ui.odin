@@ -1,6 +1,7 @@
 package widgets
 
 import "core:time"
+import "../anim"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -60,11 +61,20 @@ Memory :: struct {
 	focus:  rawptr, // state pointer of the widget receiving keys
 	active: rawptr, // widget being dragged with the mouse
 	modal:  ^bool,  // `open` of the modal drawn last frame
+	fade:   Modal_Fade, // how far that modal has faded in
 	popup:  ^bool,  // `open` of the popup drawn last frame
 	toasts: Toasts, // the toasts on screen (see `toast`)
 	hover:   rawptr,  // widget under the pointer (see `hovered`)
 	pointer: Pointer, // where the mouse was last reported
 	tooltip: Tooltip_State, // the tooltip waiting to open or showing (see `tooltip`)
+	animating: bool, // something drawn last frame is still moving (see `tween`)
+}
+
+// A modal darkening what is behind it.
+@(private)
+Modal_Fade :: struct {
+	open:  ^bool, // which modal
+	tween: anim.Tween,
 }
 
 // The mouse position, kept from the events of every frame.
@@ -123,8 +133,10 @@ begin :: proc(buf: ^buffer.Buffer, events: []input.Event, mem: ^Memory, cursor: 
 		ui.events = events[:0]
 		ui.pointer_held = .Modal
 	}
+	if mem.modal == nil { mem.fade = {} } // closed: fades in again next time
 	mem.modal = nil
 	mem.popup = nil
+	mem.animating = false
 	if theme.background != {} {
 		buffer.fill(buf, buf.area, theme.background)
 	}

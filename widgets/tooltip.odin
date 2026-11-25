@@ -84,9 +84,9 @@ tooltip_timeout :: proc(mem: ^Memory, now: time.Tick, wait_ms: int) -> int {
 }
 
 // How long to wait for input so that everything that happens by itself
-// (toasts sliding and expiring, a tooltip opening) still gets its frame.
+// (toasts sliding and expiring, a tooltip opening, tweens) still gets its frame.
 timeout :: proc(mem: ^Memory, now: time.Tick, wait_ms: int) -> int {
-	return tooltip_timeout(mem, now, toast_timeout(mem, now, wait_ms))
+	return tween_timeout(mem, tooltip_timeout(mem, now, toast_timeout(mem, now, wait_ms)))
 }
 
 // What this frame's events mean to a tooltip: the pointer moved (it is not

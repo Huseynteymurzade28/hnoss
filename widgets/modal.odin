@@ -1,5 +1,7 @@
 package widgets
 
+import "core:time"
+import "../anim"
 import "../buffer"
 import "../input"
 import "../layout"
@@ -14,11 +16,15 @@ import "../style"
 // opened, since it is drawn last). Esc or a mouse press outside `area` set
 // it to false; so does your own code, e.g. a Cancel button inside.
 //
+// With `fade`, what is behind it darkens over that time instead of at once
+// (truecolor only; other colors are dimmed right away). It needs frames:
+// wait with `hnoss.timeout`.
+//
 //	if confirm {
 //		inner := hnoss.modal(ui, hnoss.center(f.area, 40, 7), &confirm, "[b]Delete?[/]")
 //		...
 //	}
-modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -> (inner: Rect) {
+modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "", fade: time.Duration = 0) -> (inner: Rect) {
 	ui.mem.modal = open
 	if ui.held != nil {
 		ui.events = ui.held
@@ -42,25 +48,32 @@ modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -> (inner: Rect) {
 		}
 	}
 
-	dim(ui.buf)
+	if ui.mem.fade.open != open {
+		ui.mem.fade = {open = open}
+		anim.tween_set(&ui.mem.fade.tween, 0)
+	}
+	dim(ui.buf, tween(ui, &ui.mem.fade.tween, 1, fade))
 	blank(ui.buf, area)
 	return box(ui, area, title, {focused = true, fill = ui.theme.modal})
 }
 
-// Fades the whole buffer: truecolor is darkened; other foregrounds get Dim
+// Fades the whole buffer: truecolor is darkened, by `amount` (0 to 1) of
+// the way to a third; other foregrounds get Dim
 // and other backgrounds (which can't be dimmed) are dropped.
 @(private)
-dim :: proc(b: ^buffer.Buffer) {
-	fade :: proc(c: style.Color) -> (style.Color, bool) {
+dim :: proc(b: ^buffer.Buffer, amount: f64) {
+	fade :: proc(c: style.Color, amount: f64) -> (style.Color, bool) {
 		if rgb, ok := c.(style.Rgb); ok {
-			return style.Rgb{rgb.r / 3, rgb.g / 3, rgb.b / 3}, true
+			if amount >= 1 { return style.Rgb{rgb.r / 3, rgb.g / 3, rgb.b / 3}, true }
+			k := 1 - amount * 2 / 3
+			return style.Rgb{u8(f64(rgb.r) * k), u8(f64(rgb.g) * k), u8(f64(rgb.b) * k)}, true
 		}
 		return c, false
 	}
 	for &c in b.cells {
 		ok: bool
-		if c.fg, ok = fade(c.fg); !ok { c.modifiers += {.Dim} }
-		if c.bg, ok = fade(c.bg); !ok { c.bg = nil }
+		if c.fg, ok = fade(c.fg, amount); !ok { c.modifiers += {.Dim} }
+		if c.bg, ok = fade(c.bg, amount); !ok { c.bg = nil }
 	}
 }
 

@@ -426,9 +426,10 @@ hnoss.slider(ui, row1, &amp;volume, 0, 100, {step = 5, show_value = <span class=
 
 <h2 id="modal">modal</h2>
 <div class="widget">
-<div class="sig">modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "") -&gt; (inner: Rect)</div>
+<div class="sig">modal :: proc(ui: ^Ui, area: Rect, open: ^bool, title := "", fade: time.Duration = 0) -&gt; (inner: Rect)</div>
 <p>A dialog over everything drawn before it: the frame is dimmed, <code>area</code> is cleared and boxed, and the area inside is returned for the dialog's own widgets. Draw it last.</p>
 <p><code>open</code> is your flag for showing it. While it is true, the widgets under the dialog get no keys or mouse events, so a list behind it doesn't move when you press <kbd>↓</kbd>. <kbd>Esc</kbd> or a click outside sets it to false; so can your own code, e.g. a Cancel button.</p>
+<p>With <code>fade</code>, what is behind darkens over that time instead of at once (truecolor only); wait with <code>timeout</code> so it gets its frames.</p>
 <img src="widgets/modal.svg" alt="modal">
 <pre><code><span class="k">if</span> confirm {
     d := hnoss.modal(ui, hnoss.center(f.area, 36, 7), &amp;confirm, <span class="s">"[b]Delete city[/]"</span>)

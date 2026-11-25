@@ -36,6 +36,7 @@
 	<a href="#ui">The Ui context</a>
 	<a href="#focus">Focus &amp; consumed events</a>
 	<a href="#keymap">Keymaps</a>
+	<a href="#animation">Animation</a>
 	<a href="#theme">Themes</a>
 	<h4>Under the hood</h4>
 	<a href="#memory">Memory</a>
@@ -259,6 +260,17 @@ events = hnoss.poll_events(&amp;term, hnoss.keymap_timeout(&amp;km, -1))</code><
 <p>A key that begins a longer chord waits for the rest, <code>km.timeout</code> at most (0 means one second, a negative value forever); <code>keymap_timeout</code> wakes the loop for it. If the rest doesn't come, the keys so far count on their own when they are bound. <kbd>Esc</kbd> gives up the chord. <code>keymap_pending</code> is what has been typed of it, for a status bar.</p>
 <p><code>actions</code> uses the keys no widget has consumed. Call it before the widgets to let the keymap go first, for chords over a list that uses <kbd>g</kbd> itself.</p>
 <p><code>key_help(ui, area, hnoss.keymap_hints(&amp;km))</code> lists the bindings as they are now. <code>keymap_rebind(&amp;km, "save", "Ctrl+W")</code> replaces an action's keys, <code>keymap_bind</code> adds some and <code>keymap_unbind</code> takes them away; keys bound to another action move. <code>key_name</code> turns a pressed <code>Key</code> into text for it. See <code>examples/keymap</code>.</p>
+
+<h2 id="animation">Animation</h2>
+<p><code>tween(ui, &amp;state, target)</code> is where a value heading for <code>target</code> is this frame. The first call puts it there at once; after that, when <code>target</code> changes, the value moves to it, from wherever it is, over a time you choose and as long at any frame rate:</p>
+<pre><code>shown: hnoss.Tween
+...
+hnoss.gauge(ui, area, hnoss.tween(ui, &amp;shown, progress))
+hnoss.gauge(ui, area2, hnoss.tween(ui, &amp;shown2, progress, 600 * time.Millisecond, .Out_Back))
+...
+events = hnoss.poll_events(&amp;term, hnoss.timeout(&amp;term, -1))   <span class="c">// 60 fps while something moves</span></code></pre>
+<p>The same works for a scroll offset: keep the line to go to, and draw from <code>int(math.round(tween(...)))</code>. <code>tween_set(&amp;shown, 0)</code> sets a value without moving, e.g. to start a bar from empty. <code>modal</code> takes a <code>fade</code> time. Without <code>timeout</code>, animations move only when something else wakes the loop.</p>
+<p>Easings: <code>.Linear</code>, and <code>In_</code>, <code>Out_</code> and <code>In_Out_</code> of <code>Quad</code>, <code>Cubic</code>, <code>Expo</code>, <code>Back</code> and <code>Elastic</code>; the default is <code>.Out_Cubic</code> over 250 ms. <code>ease(e, t)</code> is the curve alone. <code>Back</code> and <code>Elastic</code> overshoot, so clamp what must not. See <code>examples/tween</code>.</p>
 
 <h2 id="theme">Themes</h2>
 <p>Every color a widget uses comes from <code>ui.theme</code>. Copy the default, change what you like, and pass it to <code>hnoss.ui</code>:</p>
