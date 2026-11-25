@@ -3,12 +3,18 @@
 asciicast v2 recording, which agg turns into a GIF. docs/demo.gif is made with:
 
     ./build.sh examples
-    python3 tools/record_cast.py bin/demo demo.cast 132 38 18.1
+    python3 tools/record_cast.py bin/demo demo.cast 112 32 28.4 14.2
     agg --font-family "JetBrainsMono Nerd Font Mono,DejaVu Sans Mono,Noto Sans CJK JP" \
-        --font-size 12 --line-height 1.2 --fps-cap 20 --idle-time-limit 1 --last-frame-duration 0 demo.cast docs/demo.gif
+        --font-size 14 --line-height 1.2 --fps-cap 15 --last-frame-duration 0 demo.cast raw.gif
+    ffmpeg -i raw.gif -t 14 -filter_complex "split[a][b];[a]palettegen=max_colors=160[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" docs/demo.gif
+
+The last argument skips that many seconds: what was drawn before is kept as
+one first chunk, so the recording opens on a full screen. The demo repeats
+every 14 s; recording one round after the first gives a GIF that loops seamlessly.
 """
 import codecs, fcntl, json, os, pty, select, struct, sys, termios, time
 prog, out, cols, rows, secs = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5])
+skip = float(sys.argv[6]) if len(sys.argv) > 6 else 0
 pid, fd = pty.fork()
 if pid == 0:
     os.environ["TERM"] = "xterm-256color"; os.environ["COLORTERM"] = "truecolor"
@@ -31,6 +37,9 @@ while time.time() < end:
     if os.waitpid(pid, os.WNOHANG)[0]: break
 else:
     os.kill(pid, 9); os.waitpid(pid, 0)
+if skip:
+    before = "".join(e[2] for e in evs if e[0] < skip)
+    evs = [[0, "o", before]] + [[round(e[0] - skip, 4), "o", e[2]] for e in evs if e[0] >= skip]
 with open(out, "w") as f:
     f.write(json.dumps({"version": 2, "width": cols, "height": rows, "env": {"TERM": "xterm-256color"}}) + "\n")
     for e in evs: f.write(json.dumps(e, ensure_ascii=False) + "\n")
