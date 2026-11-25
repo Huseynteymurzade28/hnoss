@@ -3,6 +3,7 @@ package tests
 import "core:strings"
 import "core:testing"
 import "../input"
+import "../widgets"
 
 @(private = "file")
 expect_script :: proc(t: ^testing.T, script: string, want: ..[]input.Event, loc := #caller_location) {
@@ -64,4 +65,70 @@ script_errors :: proc(t: ^testing.T) {
 		testing.expectf(t, err != "", "%s parsed", bad)
 		testing.expect(t, !strings.contains(err, "\n"))
 	}
+}
+
+@(private = "file")
+Form :: struct {
+	name:   widgets.Input_State,
+	agree:  bool,
+	submit: widgets.Button_State,
+	sure:   bool, // the dialog is open
+	yes:    widgets.Button_State,
+	sent:   int,
+}
+
+@(private = "file")
+draw_form :: proc(ui: ^widgets.Ui, f: ^Form) {
+	if !f.sure { widgets.focus_order(ui, {&f.name, &f.agree, &f.submit}) }
+	widgets.input(ui, {0, 0, 20, 1}, &f.name)
+	widgets.checkbox(ui, {0, 1, 20, 1}, "agree", &f.agree)
+	if widgets.button(ui, {0, 2, 8, 1}, "Send", &f.submit) { f.sure = f.agree }
+	if f.sure {
+		inner := widgets.modal(ui, {4, 0, 12, 3}, &f.sure, "Sure?")
+		widgets.focus(ui, &f.yes)
+		if widgets.button(ui, inner, "Yes", &f.yes) {
+			f.sent += 1
+			f.sure = false
+		}
+	}
+}
+
+@(test)
+script_drives_a_form_with_the_keyboard :: proc(t: ^testing.T) {
+	f: Form
+	defer widgets.input_destroy(&f.name)
+	d := driver(20, 3)
+
+	drive(t, d, `"Huso" | Left Left "s" paste:"yn"`, &f, draw_form)
+	expect_screen(t, &d.buf, `
+		Husynso
+		[ ] agree
+		  Send
+	`)
+	drive(t, d, "Tab Tab | Enter", &f, draw_form) // not agreed: nothing
+	testing.expect(t, !f.sure)
+	drive(t, d, "Shift+Tab | Space | Tab | Enter |", &f, draw_form)
+	testing.expect(t, f.sure)
+	expect_screen(t, &d.buf, `
+		Husy╭ Sure? ───╮
+		[✓] │   Yes    │
+		  Se╰──────────╯
+	`)
+	drive(t, d, "Esc", &f, draw_form)
+	testing.expect(t, !f.sure)
+	testing.expect_value(t, f.sent, 0)
+}
+
+@(test)
+script_drives_a_form_with_the_mouse :: proc(t: ^testing.T) {
+	f: Form
+	defer widgets.input_destroy(&f.name)
+	d := driver(20, 3)
+
+	drive(t, d, `click:1,1 | press:3,2 | drag:15,0 | release:15,0`, &f, draw_form) // dragged off the button
+	testing.expect(t, f.agree && !f.sure)
+	drive(t, d, "click:3,2 | | click:0,0", &f, draw_form) // the press outside closes the dialog
+	testing.expect(t, !f.sure)
+	drive(t, d, "click:3,2 | | click:9,1", &f, draw_form)
+	testing.expect_value(t, f.sent, 1)
 }
