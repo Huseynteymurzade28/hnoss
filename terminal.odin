@@ -42,6 +42,18 @@ caps_version :: input.caps_version
 is_char :: input.is_char
 is_focus :: input.is_focus
 is_key :: input.is_key
+parse_key :: input.parse_key
+key_name :: input.key_name
+Binding :: input.Binding
+Keymap :: input.Keymap
+keymap_init :: input.keymap_init
+keymap_destroy :: input.keymap_destroy
+keymap_bind :: input.keymap_bind
+keymap_unbind :: input.keymap_unbind
+keymap_rebind :: input.keymap_rebind
+keymap_lookup :: input.keymap_lookup
+keymap_keys :: input.keymap_keys
+keymap_pending :: input.keymap_pending
 
 // How long a lone ESC waits for the rest of an escape sequence before it is
 // reported as the Esc key. Long enough for sequences split by a slow link,

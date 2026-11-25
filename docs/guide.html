@@ -35,6 +35,7 @@
 	<h4>Widgets</h4>
 	<a href="#ui">The Ui context</a>
 	<a href="#focus">Focus &amp; consumed events</a>
+	<a href="#keymap">Keymaps</a>
 	<a href="#theme">Themes</a>
 	<h4>Under the hood</h4>
 	<a href="#memory">Memory</a>
@@ -234,6 +235,30 @@ hnoss.focus_order(ui, {&amp;list, &amp;search, &amp;tabs})   <span class="c">// 
 <p>Nothing is hovered under a modal, an open select or a toast, while another widget is dragged, after the terminal loses focus (with <code>.Focus_Events</code>; a terminal doesn't say when the pointer leaves its window), or in a terminal that reports clicks but not motion. Your own widgets join in with <code>hover</code>, which also returns where the pointer is:</p>
 <pre><code><span class="k">if</span> _, _, hot := hnoss.hover(ui, &amp;state, area); hot { st = hnoss.patch(st, ui.theme.hover) }</code></pre>
 <p>A <a href="widgets.html#tooltip">tooltip</a> opens where the pointer rests for half a second.</p>
+
+<h2 id="keymap">Keymaps</h2>
+<p>A <code>Keymap</code> binds keys to named actions from a table, so bindings can be listed and changed instead of being spread over <code>is_char</code> checks:</p>
+<pre><code>km: hnoss.Keymap
+hnoss.keymap_init(&amp;km, {
+    {<span class="s">""</span>, <span class="s">""</span>, <span class="s">"File"</span>},                         <span class="c">// a heading for the help page</span>
+    {<span class="s">"Ctrl+S"</span>, <span class="s">"save"</span>, <span class="s">"save"</span>},
+    {<span class="s">"F2"</span>, <span class="s">"save"</span>, <span class="s">""</span>},                     <span class="c">// more keys for the same action</span>
+    {<span class="s">"Ctrl+K Ctrl+S"</span>, <span class="s">"save_all"</span>, <span class="s">"save everything"</span>},
+    {<span class="s">"g g"</span>, <span class="s">"top"</span>, <span class="s">"first line"</span>},
+})
+...
+<span class="k">for</span> action <span class="k">in</span> hnoss.actions(ui, &amp;km) {              <span class="c">// after the widgets</span>
+    <span class="k">switch</span> action {
+    <span class="k">case</span> <span class="s">"save"</span>: save()
+    <span class="k">case</span> <span class="s">"top"</span>:  list.selected = 0
+    }
+}
+...
+events = hnoss.poll_events(&amp;term, hnoss.keymap_timeout(&amp;km, -1))</code></pre>
+<p>Keys are written <code>Ctrl+S</code>, <code>Alt+Enter</code>, <code>Shift+Tab</code>, <code>PgUp</code>, <code>Space</code>, <code>g</code>, <code>G</code>; a chord is up to four of them separated by spaces. <code>keymap_init</code> returns the index of the first row it could not read, or -1. The strings are not copied.</p>
+<p>A key that begins a longer chord waits for the rest, <code>km.timeout</code> at most (0 means one second, a negative value forever); <code>keymap_timeout</code> wakes the loop for it. If the rest doesn't come, the keys so far count on their own when they are bound. <kbd>Esc</kbd> gives up the chord. <code>keymap_pending</code> is what has been typed of it, for a status bar.</p>
+<p><code>actions</code> uses the keys no widget has consumed. Call it before the widgets to let the keymap go first, for chords over a list that uses <kbd>g</kbd> itself.</p>
+<p><code>key_help(ui, area, hnoss.keymap_hints(&amp;km))</code> lists the bindings as they are now. <code>keymap_rebind(&amp;km, "save", "Ctrl+W")</code> replaces an action's keys, <code>keymap_bind</code> adds some and <code>keymap_unbind</code> takes them away; keys bound to another action move. <code>key_name</code> turns a pressed <code>Key</code> into text for it. See <code>examples/keymap</code>.</p>
 
 <h2 id="theme">Themes</h2>
 <p>Every color a widget uses comes from <code>ui.theme</code>. Copy the default, change what you like, and pass it to <code>hnoss.ui</code>:</p>
