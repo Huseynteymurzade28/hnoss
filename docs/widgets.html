@@ -38,6 +38,7 @@
 	<a href="#scrollbar">scrollbar</a>
 	<h4>Data</h4>
 	<a href="#gauge">gauge</a>
+	<a href="#image">image</a>
 	<a href="#spinner">spinner</a>
 	<a href="#sparkline">sparkline</a>
 	<a href="#bar_chart">bar_chart</a>
@@ -238,6 +239,22 @@ hnoss.stepper(ui, head, STEPS, &amp;form.steps, opts)</code></pre>
 <div class="sig">gauge :: proc(ui: ^Ui, area: Rect, ratio: f64, label: Maybe(string) = nil)</div>
 <p>A progress bar of any height, filled in eighths of a cell. The label (default: the percentage) is centered and drawn inverted where it covers the bar.</p>
 <img src="widgets/gauge.svg" alt="gauge">
+</div>
+
+<h2 id="image">image</h2>
+<div class="widget">
+<div class="sig">image :: proc(ui: ^Ui, area: Rect, img: ^Image) -&gt; (drawn: Rect)
+image_fit :: proc(ui: ^Ui, img: ^Image, max_cols, max_rows: int) -&gt; (cols, rows: int)
+image_changed :: proc(img: ^Image)
+image_destroy :: proc(img: ^Image)</div>
+<p>RGB or RGBA pixels, as large as fits in <code>area</code> with their proportions kept, centered. In kitty (0.28 on) and Ghostty it is the image itself, through the kitty graphics protocol; elsewhere half blocks, two pixels per cell. <code>kitty_images(&amp;term)</code> tells which, <code>set_kitty_images(&amp;term, on)</code> overrides it.</p>
+<p>The terminal is sent an image the first time it is drawn and from then on only told where it goes. Images off screen are kept there for when they come back, up to 64 MB of pixels. An image is cells like any other: a modal covers it and a scroll view clips it, but a modal does not darken an image the terminal shows itself.</p>
+<p>The pixels stay yours and must be there whenever the image is drawn. Call <code>image_changed</code> after changing them. <code>image_fit</code> is the size in cells it would have, to place it yourself. hnoss decodes no files; <code>core:image</code> or <code>vendor:stb/image</code> do.</p>
+<img src="widgets/image.svg" alt="image, drawn with half blocks">
+<pre><code>img := hnoss.Image{pixels = px, width = w, height = h, channels = 4}   <span class="c">// 3 (RGB) by default</span>
+<span class="k">defer</span> hnoss.image_destroy(&amp;img)
+...
+hnoss.image(ui, area, &amp;img)</code></pre>
 </div>
 
 <h2 id="spinner">spinner</h2>
