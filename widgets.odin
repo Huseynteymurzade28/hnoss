@@ -92,6 +92,12 @@ Heatmap_Options :: widgets.Heatmap_Options
 Bar :: widgets.Bar
 Bar_Chart_Options :: widgets.Bar_Chart_Options
 tabs :: widgets.tabs
+stepper :: widgets.stepper
+stepper_next :: widgets.stepper_next
+stepper_back :: widgets.stepper_back
+stepper_go :: widgets.stepper_go
+Stepper_State :: widgets.Stepper_State
+Stepper_Options :: widgets.Stepper_Options
 input :: widgets.input
 Input_State :: widgets.Input_State
 Input_Options :: widgets.Input_Options
