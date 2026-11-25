@@ -256,3 +256,10 @@ click_tracker_counts_double_and_triple :: proc(t: ^testing.T) {
 	testing.expect_value(t, press(&tr, 0, 0, ms(3000)), 1)
 	testing.expect_value(t, press(&tr, 0, 0, ms(3150)), 1)
 }
+
+@(test)
+input_sgr_mouse_missing_params_is_skipped :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<Ma", ch('a'))
+	expect_events(t, "\x1b[<0;5Ma", ch('a'))
+	expect_events(t, "\x1b[<?ma", ch('a'))
+}

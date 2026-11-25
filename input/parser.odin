@@ -273,7 +273,8 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 
 	if private == '<' {
 		if final == 'M' || final == 'm' {
-			return parse_sgr_mouse(params[:nparams], final == 'm'), n, .Event
+			m, ok := parse_sgr_mouse(params[:nparams], final == 'm')
+			return m, n, .Event if ok else .Skip
 		}
 		return nil, n, .Skip
 	}
@@ -417,12 +418,12 @@ KP_NAV := [10]Key_Code{.Left, .Right, .Up, .Down, .Page_Up, .Page_Down, .Home, .
 //   b & 3: 0 left, 1 middle, 2 right, 3 none   b & 4 Shift, 8 Alt, 16 Ctrl
 //   b & 32: motion   b & 64: wheel (b & 3: 0 up, 1 down, 2 left, 3 right)
 @(private)
-parse_sgr_mouse :: proc(params: []int, release: bool) -> Mouse {
+parse_sgr_mouse :: proc(params: []int, release: bool) -> (m: Mouse, ok: bool) {
 	if len(params) < 3 {
-		return {}
+		return
 	}
 	b := params[0]
-	m := Mouse{x = max(params[1] - 1, 0), y = max(params[2] - 1, 0)}
+	m = {x = max(params[1] - 1, 0), y = max(params[2] - 1, 0)}
 	if b & 4 != 0 { m.mods += {.Shift} }
 	if b & 8 != 0 { m.mods += {.Alt} }
 	if b & 16 != 0 { m.mods += {.Ctrl} }
@@ -445,5 +446,5 @@ parse_sgr_mouse :: proc(params: []int, release: bool) -> Mouse {
 			m.button = Mouse_Button(int(Mouse_Button.Left) + low)
 		}
 	}
-	return m
+	return m, true
 }
