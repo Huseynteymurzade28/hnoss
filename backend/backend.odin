@@ -60,6 +60,7 @@ Error :: enum u8 {
 
 Size :: struct {
 	cols, rows: int,
+	width, height: int, // in pixels; 0 if the terminal doesn't say
 }
 
 Read_Result :: struct {
