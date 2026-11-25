@@ -194,7 +194,7 @@ input_kitty_disambiguated_keys :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[109;5u", ch('m', {.Ctrl}))            // Ctrl+M, not Enter
 	expect_events(t, "\x1b[13;2u", key(.Enter, {.Shift}))        // Shift+Enter
 	expect_events(t, "\x1b[127;5u", key(.Backspace, {.Ctrl}))    // Ctrl+Backspace
-	expect_events(t, "\x1b[9;2u", key(.Tab, {.Shift}))
+	expect_events(t, "\x1b[9;2u", key(.Back_Tab, {.Shift})) // the same as CSI Z
 	expect_events(t, "\x1b[120;3u", ch('x', {.Alt}))
 	expect_events(t, "\x1b[97;6u", ch('a', {.Shift, .Ctrl}))
 	expect_events(t, "\x1b[399;5u", ch('Ə', {.Ctrl}))             // non-ASCII codepoints too
@@ -255,4 +255,58 @@ click_tracker_counts_double_and_triple :: proc(t: ^testing.T) {
 	tr.interval = 100 * time.Millisecond
 	testing.expect_value(t, press(&tr, 0, 0, ms(3000)), 1)
 	testing.expect_value(t, press(&tr, 0, 0, ms(3150)), 1)
+}
+
+@(test)
+input_sgr_mouse_missing_params_is_skipped :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<Ma", ch('a'))
+	expect_events(t, "\x1b[<0;5Ma", ch('a'))
+	expect_events(t, "\x1b[<?ma", ch('a'))
+}
+
+// Back and forward are not the left and middle buttons.
+@(test)
+input_sgr_mouse_extra_buttons_are_skipped :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<128;3;3M\x1b[<128;3;3ma", ch('a'))
+	expect_events(t, "\x1b[<129;3;3Ma", ch('a'))
+	expect_events(t, "\x1b[<160;3;3Ma", ch('a')) // dragging with one
+}
+
+@(test)
+input_sgr_mouse_press_needs_a_button :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[<3;2;2Ma", ch('a'))
+	expect_events(t, "\x1b[<3;2;2m", input.Mouse{kind = .Release, x = 1, y = 1}) // a release may not know
+}
+
+@(test)
+input_csi_u_rejects_invalid_codepoints :: proc(t: ^testing.T) {
+	expect_events(t, "\x1b[55296ua", ch('a'))   // U+D800, a surrogate
+	expect_events(t, "\x1b[57343ua", ch('a'))   // U+DFFF
+	expect_events(t, "\x1b[1114112ua", ch('a')) // U+110000
+	expect_events(t, "\x1b[1114111u", ch(rune(0x10ffff)))
+}
+
+// A UTF-8 sequence cut short neither waits for more nor takes the key
+// after it along.
+@(test)
+input_truncated_utf8_keeps_the_next_key :: proc(t: ^testing.T) {
+	expect_events(t, "\xe4a", ch('a'))
+	expect_events(t, "\xf0\x9f\r", key(.Enter))
+	expect_events(t, "\xe4\x1b[A", key(.Up))
+
+	got := parse("\xe4a", flush = false)
+	testing.expect_value(t, len(got), 1)
+}
+
+@(test)
+input_replacement_character_is_a_key :: proc(t: ^testing.T) {
+	expect_events(t, "\xef\xbf\xbd", ch(rune(0xfffd)))
+	expect_events(t, "\xed\xa0\x80a", ch('a')) // an encoded surrogate is still invalid
+}
+
+@(test)
+input_alt_o_before_another_sequence :: proc(t: ^testing.T) {
+	expect_events(t, "\x1bO\x1b[A", ch('O', {.Alt}), key(.Up))
+	expect_events(t, "\x1bO\r", ch('O', {.Alt}), key(.Enter))
+	expect_events(t, "\x1bOö", ch('O', {.Alt}), ch('ö'))
 }

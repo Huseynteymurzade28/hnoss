@@ -192,12 +192,17 @@ parse_plain :: proc(b: []u8, final: bool) -> (Event, int, Status) {
 	if want == 0 {
 		return nil, 1, .Skip // stray continuation byte or invalid lead
 	}
+	for i in 1 ..< min(want, len(b)) {
+		if b[i] & 0xc0 != 0x80 {
+			return nil, i, .Skip // cut short: what follows is not part of it
+		}
+	}
 	if len(b) < want {
 		if final { return nil, len(b), .Skip }
 		return nil, 0, .Incomplete
 	}
 	r, n := utf8.decode_rune(b[:want])
-	if r == utf8.RUNE_ERROR {
+	if r == utf8.RUNE_ERROR && n == 1 { // not U+FFFD itself, which takes 3 bytes
 		return nil, 1, .Skip
 	}
 	return Key{code = .Char, char = r}, n, .Event
@@ -216,6 +221,10 @@ utf8_len :: proc(lead: u8) -> int {
 // SS3 (ESC O x): arrows/Home/End in application cursor mode, F1-F4.
 @(private)
 parse_ss3 :: proc(b: []u8) -> (Event, int, Status) {
+	if b[2] < 0x20 || b[2] > 0x7e {
+		// Not an SS3: Alt+O and the start of something else.
+		return Key{code = .Char, char = 'O', mods = {.Alt}}, 2, .Event
+	}
 	code: Key_Code
 	switch b[2] {
 	case 'A': code = .Up
@@ -240,6 +249,11 @@ MAX_CSI :: 64
 
 @(private)
 MAX_PARAMS :: 8
+
+// Larger values are capped here: past every codepoint, so a capped one is
+// still invalid.
+@(private)
+MAX_PARAM :: 1 << 24
 
 // CSI: ESC [ <private?> <params 0x30-0x3f> <intermediates 0x20-0x2f> <final 0x40-0x7e>
 @(private)
@@ -273,7 +287,8 @@ parse_csi :: proc(b: []u8) -> (Event, int, Status) {
 
 	if private == '<' {
 		if final == 'M' || final == 'm' {
-			return parse_sgr_mouse(params[:nparams], final == 'm'), n, .Event
+			m, ok := parse_sgr_mouse(params[:nparams], final == 'm')
+			return m, n, .Event if ok else .Skip
 		}
 		return nil, n, .Skip
 	}
@@ -357,7 +372,7 @@ parse_params :: proc(body: []u8, out: ^[MAX_PARAMS]int) -> int {
 	for c in body {
 		switch c {
 		case '0' ..= '9':
-			if !sub { cur = min(cur * 10 + int(c - '0'), 1 << 20) }
+			if !sub { cur = min(cur * 10 + int(c - '0'), MAX_PARAM) }
 		case ';':
 			if n < MAX_PARAMS { out[n] = cur }
 			n += 1
@@ -388,7 +403,7 @@ decode_modifiers :: proc(param: int) -> Key_Modifiers {
 csi_u_key :: proc(code: int, mods: Key_Modifiers) -> (Key, bool) {
 	switch code {
 	case 13:  return {code = .Enter, mods = mods}, true
-	case 9:   return {code = .Tab, mods = mods}, true
+	case 9:   return {code = .Back_Tab if .Shift in mods else .Tab, mods = mods}, true
 	case 27:  return {code = .Esc, mods = mods}, true
 	case 127, 8: return {code = .Backspace, mods = mods}, true
 	case 57399 ..= 57408: // KP_0 .. KP_9
@@ -401,8 +416,8 @@ csi_u_key :: proc(code: int, mods: Key_Modifiers) -> (Key, bool) {
 	case 57376 ..= 57398, 57344 ..= 57375, 57427 ..= 57454:
 		return {}, false // F13+, lock/media/modifier keys: nothing to map to
 	}
-	if code < 0x20 || code > 0x10ffff {
-		return {}, false
+	if code < 0x20 || !utf8.valid_rune(rune(code)) {
+		return {}, false // control codes, surrogates, past U+10FFFF
 	}
 	return {code = .Char, char = rune(code), mods = mods}, true
 }
@@ -416,13 +431,17 @@ KP_NAV := [10]Key_Code{.Left, .Right, .Up, .Down, .Page_Up, .Page_Down, .Home, .
 // SGR (1006) mouse: CSI < b ; x ; y M  (press/motion)  or  ... m  (release).
 //   b & 3: 0 left, 1 middle, 2 right, 3 none   b & 4 Shift, 8 Alt, 16 Ctrl
 //   b & 32: motion   b & 64: wheel (b & 3: 0 up, 1 down, 2 left, 3 right)
+//   b & 128: buttons 8-11, ignored
 @(private)
-parse_sgr_mouse :: proc(params: []int, release: bool) -> Mouse {
+parse_sgr_mouse :: proc(params: []int, release: bool) -> (m: Mouse, ok: bool) {
 	if len(params) < 3 {
-		return {}
+		return
 	}
 	b := params[0]
-	m := Mouse{x = max(params[1] - 1, 0), y = max(params[2] - 1, 0)}
+	if b & 128 != 0 {
+		return // buttons 8-11 (back, forward): no Mouse_Button for them
+	}
+	m = {x = max(params[1] - 1, 0), y = max(params[2] - 1, 0)}
 	if b & 4 != 0 { m.mods += {.Shift} }
 	if b & 8 != 0 { m.mods += {.Alt} }
 	if b & 16 != 0 { m.mods += {.Ctrl} }
@@ -440,10 +459,13 @@ parse_sgr_mouse :: proc(params: []int, release: bool) -> Mouse {
 			m.button = Mouse_Button(int(Mouse_Button.Left) + low)
 		}
 	case:
+		if low == 3 && !release {
+			return // a press of no button
+		}
 		m.kind = .Release if release else .Press
 		if low != 3 {
 			m.button = Mouse_Button(int(Mouse_Button.Left) + low)
 		}
 	}
-	return m
+	return m, true
 }

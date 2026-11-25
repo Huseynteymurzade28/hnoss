@@ -1,5 +1,6 @@
 package tests
 
+import "core:strings"
 import "core:testing"
 import hnoss ".."
 import "../input"
@@ -109,4 +110,27 @@ caps_upgrade_depth_and_features :: proc(t: ^testing.T) {
 	testing.expect(t, style.detect_styled_underlines({xtversion = "ghostty 1.1.0"}))
 	testing.expect(t, !style.detect_styled_underlines({xtversion = "XTerm(390)"}))
 	testing.expect(t, !style.detect_styled_underlines({xtversion = "tmux 3.4"}))
+}
+
+// A reply too long by one byte is dropped the same whether or not its last
+// byte came in the same read.
+@(test)
+caps_dcs_at_the_length_limit :: proc(t: ^testing.T) {
+	for extra in 0 ..= 1 {
+		sb := strings.builder_make(context.temp_allocator)
+		strings.write_string(&sb, "\x1bP>|")
+		for strings.builder_len(sb) < 254 + extra { strings.write_byte(&sb, 'x') }
+		strings.write_string(&sb, "\x1b\\")
+		seq := sb.buf[:]
+
+		for split in ([]int{len(seq) - 1, 10, 0}) {
+			p: input.Parser
+			input.parser_init(&p, context.temp_allocator)
+			input.await_replies(&p)
+			events := make([dynamic]input.Event, context.temp_allocator)
+			input.feed(&p, seq[:split], &events)
+			input.feed(&p, seq[split:], &events)
+			testing.expectf(t, (p.caps.version_len > 0) == (extra == 0), "%d bytes, split at %d", len(seq), split)
+		}
+	}
 }
