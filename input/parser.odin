@@ -192,6 +192,11 @@ parse_plain :: proc(b: []u8, final: bool) -> (Event, int, Status) {
 	if want == 0 {
 		return nil, 1, .Skip // stray continuation byte or invalid lead
 	}
+	for i in 1 ..< min(want, len(b)) {
+		if b[i] & 0xc0 != 0x80 {
+			return nil, i, .Skip // cut short: what follows is not part of it
+		}
+	}
 	if len(b) < want {
 		if final { return nil, len(b), .Skip }
 		return nil, 0, .Incomplete

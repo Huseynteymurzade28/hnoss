@@ -285,3 +285,15 @@ input_csi_u_rejects_invalid_codepoints :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[1114112ua", ch('a')) // U+110000
 	expect_events(t, "\x1b[1114111u", ch(rune(0x10ffff)))
 }
+
+// A UTF-8 sequence cut short neither waits for more nor takes the key
+// after it along.
+@(test)
+input_truncated_utf8_keeps_the_next_key :: proc(t: ^testing.T) {
+	expect_events(t, "\xe4a", ch('a'))
+	expect_events(t, "\xf0\x9f\r", key(.Enter))
+	expect_events(t, "\xe4\x1b[A", key(.Up))
+
+	got := parse("\xe4a", flush = false)
+	testing.expect_value(t, len(got), 1)
+}
