@@ -194,7 +194,7 @@ input_kitty_disambiguated_keys :: proc(t: ^testing.T) {
 	expect_events(t, "\x1b[109;5u", ch('m', {.Ctrl}))            // Ctrl+M, not Enter
 	expect_events(t, "\x1b[13;2u", key(.Enter, {.Shift}))        // Shift+Enter
 	expect_events(t, "\x1b[127;5u", key(.Backspace, {.Ctrl}))    // Ctrl+Backspace
-	expect_events(t, "\x1b[9;2u", key(.Tab, {.Shift}))
+	expect_events(t, "\x1b[9;2u", key(.Back_Tab, {.Shift})) // the same as CSI Z
 	expect_events(t, "\x1b[120;3u", ch('x', {.Alt}))
 	expect_events(t, "\x1b[97;6u", ch('a', {.Shift, .Ctrl}))
 	expect_events(t, "\x1b[399;5u", ch('Ə', {.Ctrl}))             // non-ASCII codepoints too

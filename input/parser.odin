@@ -403,7 +403,7 @@ decode_modifiers :: proc(param: int) -> Key_Modifiers {
 csi_u_key :: proc(code: int, mods: Key_Modifiers) -> (Key, bool) {
 	switch code {
 	case 13:  return {code = .Enter, mods = mods}, true
-	case 9:   return {code = .Tab, mods = mods}, true
+	case 9:   return {code = .Back_Tab if .Shift in mods else .Tab, mods = mods}, true
 	case 27:  return {code = .Esc, mods = mods}, true
 	case 127, 8: return {code = .Backspace, mods = mods}, true
 	case 57399 ..= 57408: // KP_0 .. KP_9
