@@ -26,7 +26,8 @@ Stepper_Options :: struct {
 // click on a step. Going on asks `opts.validate` about every step that is
 // left; the first that isn't valid becomes the current one, marked ✗, with
 // its message on the second row of `area` if there is one. Next and Back
-// buttons call `stepper_next` and `stepper_back`. Returns true when
+// buttons call `stepper_next` and `stepper_back`. Call it after the step's fields, so
+// its message is about what they hold this frame. Returns true when
 // `state.current` changed; with every step done it is len(steps).
 stepper :: proc(ui: ^Ui, area: Rect, steps: []string, state: ^Stepper_State, opts := Stepper_Options{}) -> (changed: bool) {
 	n := len(steps)
