@@ -201,7 +201,7 @@ size :: proc(b: ^Backend) -> (Size, Error) {
 	if ws.col == 0 || ws.row == 0 {
 		return {}, fail(b, .Size_Failed, .NONE)
 	}
-	return {int(ws.col), int(ws.row)}, .None
+	return {int(ws.col), int(ws.row), int(ws.xpixel), int(ws.ypixel)}, .None
 }
 
 // Queues output; nothing reaches the terminal until `flush`.

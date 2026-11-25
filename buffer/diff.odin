@@ -2,6 +2,7 @@ package buffer
 
 import "core:hash"
 import "core:strconv"
+import "core:unicode/utf8"
 import "../style"
 
 // Synchronized output (DEC private mode 2026): the terminal holds the frame
@@ -67,7 +68,11 @@ diff :: proc(
 					set_link(out, link_url(next, want))
 					link = want
 				}
-				append(out, ..n.symbol[:n.len])
+				if n.image.id != 0 {
+					append_placeholder(out, n.image)
+				} else {
+					append(out, ..n.symbol[:n.len])
+				}
 				cur_x, cur_y = x + max(int(n.width), 1), y
 			}
 			to_skip = max(int(n.width) - 1, 0)
@@ -148,6 +153,15 @@ update_pen :: proc(out: ^[dynamic]u8, pen: ^Pen, c: ^Cell, depth: style.Color_De
 		want.underline = c.underline
 		want.underline_color = normalize(style.downsample(c.underline_color, depth))
 	}
+	if c.image.id != 0 {
+		// The colors of a placeholder say which image and placement it
+		// belongs to, so they are exact whatever the depth.
+		want = {
+			fg              = id_color(c.image.id),
+			bg              = want.bg,
+			underline_color = id_color(image_placement(c.image.cols, c.image.rows)),
+		}
+	}
 	if want == pen^ {
 		return
 	}
@@ -196,6 +210,21 @@ update_pen :: proc(out: ^[dynamic]u8, pen: ^Pen, c: ^Cell, depth: style.Color_De
 		append(out, 'm')
 	}
 	pen^ = want
+}
+
+@(private)
+id_color :: proc(id: u32) -> style.Color {
+	return style.Rgb{u8(id >> 16), u8(id >> 8), u8(id)}
+}
+
+// U+10EEEE with the row and column as combining characters.
+// https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders
+@(private)
+append_placeholder :: proc(out: ^[dynamic]u8, p: Image_Part) {
+	for r in ([3]rune{0x10eeee, DIACRITICS[p.row], DIACRITICS[p.col]}) {
+		buf, n := utf8.encode_rune(r)
+		append(out, ..buf[:n])
+	}
 }
 
 // nil and .Reset mean the same thing on screen; fold them so they compare equal.

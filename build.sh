@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 ODIN=${ODIN:-odin}
 FLAGS=(-vet -strict-style -warnings-as-errors)
-PACKAGES=(. anim backend input buffer style layout text pen widgets)
+PACKAGES=(. anim backend input buffer graphics style layout text pen widgets)
 
 check() {
 	for p in "${PACKAGES[@]}"; do

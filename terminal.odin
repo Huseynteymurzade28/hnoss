@@ -1,6 +1,7 @@
 package hnoss
 
 import "core:encoding/base64"
+import "core:math/rand"
 import "core:mem"
 import "core:os"
 import "core:strings"
@@ -8,6 +9,7 @@ import "core:time"
 import "core:unicode/utf8"
 import "backend"
 import "buffer"
+import "graphics"
 import "input"
 import "layout"
 import "style"
@@ -113,6 +115,7 @@ Terminal :: struct {
 	caps_applied:     bool,
 	depth_chosen:     bool,
 	features_chosen:  bool,
+	images_chosen:    bool, // set_kitty_images was called
 	early_events:     [dynamic]Event, // input that arrived while init waited for caps
 
 	widget_memory:  widgets.Memory, // focus / drag state that outlives a frame
@@ -149,6 +152,9 @@ init :: proc(opts := DEFAULT_OPTIONS, allocator := context.allocator) -> (t: Ter
 	}
 	input.parser_init(&t.parser, allocator)
 	t.early_events = make([dynamic]Event, allocator)
+	t.widget_memory.images.sent.allocator = allocator
+	t.widget_memory.images.out.allocator = allocator
+	t.widget_memory.images.next_id = rand.uint32() // other programs' images have ids too
 	if .Query_Caps in opts {
 		query_caps(&t)
 	}
@@ -191,6 +197,9 @@ sync_caps :: proc(t: ^Terminal) {
 		return
 	}
 	t.caps_applied = true
+	if !t.images_chosen {
+		t.widget_memory.images.kitty = graphics.supports_placeholders(input.caps_version(&t.caps))
+	}
 	depth, features := upgrade_from_caps(&t.caps, t.color_depth, t.output_features)
 	if !t.depth_chosen && depth != t.color_depth {
 		t.color_depth = depth
@@ -221,6 +230,9 @@ deinit :: proc(t: ^Terminal) {
 		if p, ok := ev.(Paste); ok { delete(p.text, t.allocator) }
 	}
 	delete(t.early_events)
+	// The images of the main screen would outlive the program.
+	widgets.images_delete(&t.widget_memory.images, &t.backend.out)
+	widgets.images_destroy(&t.widget_memory.images)
 	input.parser_destroy(&t.parser)
 	for &b in t.buffers {
 		buffer.destroy(&b)
@@ -242,6 +254,8 @@ begin_frame :: proc(t: ^Terminal) -> ^Frame {
 			}
 			t.needs_clear = true
 		}
+		t.widget_memory.images.cell_width = sz.width / sz.cols
+		t.widget_memory.images.cell_height = sz.height / sz.rows
 	}
 	back := &t.buffers[t.current]
 	buffer.reset(back)
@@ -261,6 +275,7 @@ end_frame :: proc(t: ^Terminal) -> Error {
 
 	b := &t.backend
 	start := len(b.out)
+	widgets.images_flush(&t.widget_memory.images, &b.out)
 	backend.write(b, buffer.BEGIN_SYNC)
 	if t.needs_clear {
 		// After a clear the screen is blank, which is exactly an empty
@@ -284,6 +299,7 @@ end_frame :: proc(t: ^Terminal) -> Error {
 		backend.write(b, backend.HIDE_CURSOR)
 		t.cursor_shown = false
 	}
+	widgets.images_end_frame(&t.widget_memory.images, &b.out)
 	backend.write(b, buffer.END_SYNC)
 	t.last_bytes = len(b.out) - start
 
@@ -370,6 +386,19 @@ set_output_features :: proc(t: ^Terminal, features: Output_Features) {
 	}
 }
 
+// Whether images are sent to the terminal (kitty graphics protocol with
+// Unicode placeholders) or drawn with half blocks, instead of what the
+// terminal said about itself (see Option.Query_Caps).
+set_kitty_images :: proc(t: ^Terminal, on: bool) {
+	t.images_chosen = true
+	t.widget_memory.images.kitty = on
+}
+
+// True when images are shown by the terminal itself.
+kitty_images :: proc(t: ^Terminal) -> bool {
+	return t.widget_memory.images.kitty
+}
+
 // What the environment says the terminal can show: underline shapes and
 // colors as style.detect_styled_underlines guesses them; hyperlinks
 // everywhere but TERM=dumb and the Linux console (terminals that don't
@@ -414,6 +443,7 @@ check_resumed :: proc(t: ^Terminal) -> bool {
 		return false
 	}
 	t.needs_clear = true
+	widgets.images_forget(&t.widget_memory.images)
 	t.cursor_shape = {}
 	t.cursor_shown = false
 	if t.title_len > 0 {
