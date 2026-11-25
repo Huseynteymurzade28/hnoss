@@ -303,3 +303,10 @@ input_replacement_character_is_a_key :: proc(t: ^testing.T) {
 	expect_events(t, "\xef\xbf\xbd", ch(rune(0xfffd)))
 	expect_events(t, "\xed\xa0\x80a", ch('a')) // an encoded surrogate is still invalid
 }
+
+@(test)
+input_alt_o_before_another_sequence :: proc(t: ^testing.T) {
+	expect_events(t, "\x1bO\x1b[A", ch('O', {.Alt}), key(.Up))
+	expect_events(t, "\x1bO\r", ch('O', {.Alt}), key(.Enter))
+	expect_events(t, "\x1bOö", ch('O', {.Alt}), ch('ö'))
+}

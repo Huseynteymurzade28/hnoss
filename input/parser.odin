@@ -221,6 +221,10 @@ utf8_len :: proc(lead: u8) -> int {
 // SS3 (ESC O x): arrows/Home/End in application cursor mode, F1-F4.
 @(private)
 parse_ss3 :: proc(b: []u8) -> (Event, int, Status) {
+	if b[2] < 0x20 || b[2] > 0x7e {
+		// Not an SS3: Alt+O and the start of something else.
+		return Key{code = .Char, char = 'O', mods = {.Alt}}, 2, .Event
+	}
 	code: Key_Code
 	switch b[2] {
 	case 'A': code = .Up
