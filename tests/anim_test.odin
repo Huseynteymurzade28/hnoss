@@ -2,6 +2,7 @@ package tests
 
 import "core:math"
 import "core:testing"
+import "core:time"
 import "../anim"
 
 @(private = "file")
@@ -40,4 +41,39 @@ ease_known_values :: proc(t: ^testing.T) {
 	past := 0.0
 	for i in 0 ..= 100 { past = max(past, anim.ease(.Out_Back, f64(i) / 100)) }
 	testing.expect(t, near(past, 1.1, 0.001))
+}
+
+@(private = "file")
+at :: proc(ms: int) -> time.Tick {
+	return {1 + i64(ms) * i64(time.Millisecond)}
+}
+
+@(test)
+tween_runs_on_time :: proc(t: ^testing.T) {
+	tw: anim.Tween
+	anim.tween_to(&tw, 10, at(0)) // the first value is just there
+	testing.expect_value(t, anim.tween_value(&tw, at(0)), 10)
+	testing.expect(t, !anim.tween_running(&tw, at(0)))
+
+	for ms := 0; ms <= 100; ms += 20 { // however often it is called
+		anim.tween_to(&tw, 20, at(ms), 100 * time.Millisecond, .Linear)
+		testing.expectf(t, near(anim.tween_value(&tw, at(ms)), 10 + f64(ms) / 10), "at %d: %v", ms, anim.tween_value(&tw, at(ms)))
+	}
+	testing.expect(t, anim.tween_running(&tw, at(99)))
+	testing.expect(t, !anim.tween_running(&tw, at(100)))
+	testing.expect_value(t, anim.tween_value(&tw, at(5000)), 20)
+}
+
+@(test)
+tween_turns_around_where_it_is :: proc(t: ^testing.T) {
+	tw: anim.Tween
+	anim.tween_set(&tw, 0)
+	anim.tween_to(&tw, 10, at(0), 100 * time.Millisecond, .Linear)
+	anim.tween_to(&tw, 0, at(50), 100 * time.Millisecond, .Linear)
+	testing.expect(t, near(anim.tween_value(&tw, at(50)), 5))
+	testing.expect(t, near(anim.tween_value(&tw, at(100)), 2.5))
+	testing.expect_value(t, anim.tween_value(&tw, at(150)), 0)
+
+	anim.tween_to(&tw, 8, at(200), 0) // no duration: at once
+	testing.expect_value(t, anim.tween_value(&tw, at(200)), 8)
 }
